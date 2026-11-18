@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BC Energy Step Code Dashboard</title>
+<meta name="description" content="BC Energy Step Code evaluation data, filterable by regional district, municipality and year built.">
+<style>
+  :root {
+    --bg: #fbfbfa;
+    --panel: #ffffff;
+    --fg: #1b1f23;
+    --fg-muted: #6b7280;
+    --border: #e3e3e6;
+    --accent: #2f7d6b;
+    --accent-soft: rgba(47, 125, 107, 0.12);
+    --grid: #ececef;
+    --axis: #9aa1ab;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --panel: #1b1e23;
+      --fg: #e8e9eb;
+      --fg-muted: #9aa1ab;
+      --border: #2b2f36;
+      --accent: #52b095;
+      --accent-soft: rgba(82, 176, 149, 0.16);
+      --grid: #262a30;
+      --axis: #6b7280;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 20px max(16px, env(safe-area-inset-right)) 60px max(16px, env(safe-area-inset-left));
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.7rem; font-weight: 650; margin: 0 0 4px 0; letter-spacing: -0.01em; }
+  .subtitle { color: var(--fg-muted); margin: 0 0 20px 0; }
+  .meta-note { color: var(--fg-muted); font-size: 0.78rem; margin: -14px 0 20px 0; }
+  .meta-note a { color: var(--accent); }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 14px;
+    padding: 14px;
+    margin-bottom: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--fg-muted); min-width: 0; }
+  .filters select {
+    min-width: 170px;
+    font: inherit;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--fg);
+  }
+  .reset-btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg);
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    height: 34px;
+  }
+  .reset-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; padding-bottom: 8px; }
+  .tab-btn {
+    border: none; background: transparent; color: var(--fg-muted);
+    font: inherit; font-weight: 550; padding: 7px 12px; border-radius: 7px; cursor: pointer;
+  }
+  .tab-btn:hover { background: var(--accent-soft); color: var(--fg); }
+  .tab-btn.active { background: var(--accent-soft); color: var(--accent); }
+  .tab-panel[hidden] { display: none; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+  .kpi-label { display: block; font-size: 0.76rem; color: var(--fg-muted); margin-bottom: 4px; }
+  .kpi-value { font-size: 1.6rem; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .kpi-unit { display: block; font-size: 0.74rem; color: var(--fg-muted); margin-top: 2px; }
+
+  .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 14px; }
+  .chart-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-card h3 { margin: 0 0 10px 0; font-size: 0.92rem; font-weight: 600; }
+  .chart-card p.chart-note { margin: 8px 0 0 0; font-size: 0.76rem; color: var(--fg-muted); }
+  .chart-box { position: relative; min-height: 220px; }
+  .chart-box svg text { font-family: inherit; }
+  .chart-empty { fill: var(--fg-muted); font-size: 0.78rem; }
+
+  .chart-tooltip {
+    position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12); color: var(--fg); font-size: 0.76rem; padding: 4px 8px;
+    border-radius: 6px; opacity: 0; transition: opacity 0.1s; white-space: nowrap; z-index: 5;
+  }
+
+  .progress-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .progress-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .progress-top .progress-value { font-size: 1.3rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .progress-track { height: 10px; border-radius: 999px; background: var(--grid); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 999px; background: var(--accent); width: 0%; transition: width 0.4s ease-out; }
+
+  footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 0.78rem; }
+  footer a { color: var(--accent); }
+
+  @media (max-width: 460px) {
+    .filters { flex-direction: column; align-items: stretch; }
+    .filters select { min-width: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+  <header>
+    <h1>BC Energy Step Code Dashboard</h1>
+    <p class="subtitle" id="subtitle">Loading…</p>
+    <p class="meta-note" id="metaNote"></p>
+  </header>
+
+  <div class="filters">
+    <label>Regional district
+      <select id="regionFilter" aria-label="Regional district"></select>
+    </label>
+    <label>Municipality
+      <select id="cityFilter" aria-label="Municipality"></select>
+    </label>
+    <label>Year built from
+      <select id="yearFromFilter" aria-label="Year built from"></select>
+    </label>
+    <label>to
+      <select id="yearToFilter" aria-label="Year built to"></select>
+    </label>
+    <button class="reset-btn" id="resetFilters" type="button">Reset filters</button>
+  </div>
+
+  <nav class="tabs" id="tabNav">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="meui">MEUI</button>
+    <button class="tab-btn" data-tab="tedi">TEDI</button>
+    <button class="tab-btn" data-tab="airtightness">Airtightness</button>
+    <button class="tab-btn" data-tab="ghg">GHG &amp; Step Code</button>
+    <button class="tab-btn" data-tab="heating">Heating</button>
+    <button class="tab-btn" data-tab="cooling">Cooling</button>
+    <button class="tab-btn" data-tab="dhw">Hot water</button>
+    <button class="tab-btn" data-tab="envelope">Envelope</button>
+  </nav>
+
+  <section id="tab-overview" class="tab-panel" data-panel="overview">
+    <div class="kpi-row">
+      <div class="kpi-card"><span class="kpi-label">Homes evaluated</span><span class="kpi-value" id="kpiCount">—</span></div>
+      <div class="kpi-card"><span class="kpi-label">Avg. MEUI</span><span class="kpi-value" id="kpiMeuiOv">—</span><span class="kpi-unit">kWh/m²/yr</span></div>
+      <div class="kpi-card"><span class="kpi-label">Avg. TEDI</span><span class="kpi-value" id="kpiTediOv">—</span><span class="kpi-unit">kWh/m²/yr</span></div>
+      <div class="kpi-card"><span class="kpi-label">Avg. airtightness</span><span class="kpi-value" id="kpiAchOv">—</span><span class="kpi-unit">ACH50</span></div>
+      <div class="kpi-card"><span class="kpi-label">Avg. GHGs</span><span class="kpi-value" id="kpiGhgOv">—</span><span class="kpi-unit">kg CO2e/yr</span></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Evaluations by year built</h3><div class="chart-box" id="chartEvalsByYear"></div></div>
+      <div class="chart-card"><h3>Top regional districts</h3><div class="chart-box" id="chartTopRegions"></div><p class="chart-note">Click a bar to filter the whole dashboard to that regional district.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Top municipalities</h3><div class="chart-box" id="chartTopCities"></div><p class="chart-note">Click a bar to filter to that municipality. Scoped by the regional district and year-built filters.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Step Code achieved (overall)</h3><div class="chart-box" id="chartStepBreakdown"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-meui" class="tab-panel" data-panel="meui" hidden>
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. MEUI, current filters</span><span class="kpi-value" id="kpiMeui">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. MEUI by year built</h3><div class="chart-box" id="chartMeuiTrend"></div></div>
+      <div class="chart-card"><h3>MEUI step achieved</h3><div class="chart-box" id="chartMeuiStep"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-tedi" class="tab-panel" data-panel="tedi" hidden>
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. TEDI, current filters</span><span class="kpi-value" id="kpiTedi">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. TEDI by year built</h3><div class="chart-box" id="chartTediTrend"></div></div>
+      <div class="chart-card"><h3>TEDI step achieved</h3><div class="chart-box" id="chartTediStep"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-airtightness" class="tab-panel" data-panel="airtightness" hidden>
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. ACH50 by year built</h3><div class="chart-box" id="chartAchTrend"></div></div>
+      <div class="chart-card"><h3>Airtightness step achieved</h3><div class="chart-box" id="chartAchStep"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-ghg" class="tab-panel" data-panel="ghg" hidden>
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. GHGs, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/yr</span></div></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. GHGs by year built</h3><div class="chart-box" id="chartGhgTrend"></div></div>
+      <div class="chart-card"><h3>Energy Limit (EL) achieved</h3><div class="chart-box" id="chartElBreakdown"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-heating" class="tab-panel" data-panel="heating" hidden>
+    <div class="progress-row">
+      <div class="progress-top"><span class="kpi-label">Homes with a heat pump</span><span class="progress-value" id="pctHeatPump">—</span></div>
+      <div class="progress-track"><div class="progress-fill" id="heatPumpFill"></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Primary heating system</h3><div class="chart-box" id="chartHeatingSystem"></div></div>
+      <div class="chart-card"><h3>Primary heating fuel</h3><div class="chart-box" id="chartHeatingFuel"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-cooling" class="tab-panel" data-panel="cooling" hidden>
+    <div class="progress-row">
+      <div class="progress-top"><span class="kpi-label">Homes with cooling</span><span class="progress-value" id="pctCooled">—</span></div>
+      <div class="progress-track"><div class="progress-fill" id="cooledFill"></div></div>
+    </div>
+    <div class="chart-row"><div class="chart-card wide"><h3>Cooling equipment type</h3><div class="chart-box" id="chartCoolingType"></div></div></div>
+  </section>
+
+  <section id="tab-dhw" class="tab-panel" data-panel="dhw" hidden>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Domestic hot water system type</h3><div class="chart-box" id="chartDhwType"></div></div>
+      <div class="chart-card"><h3>Domestic hot water fuel</h3><div class="chart-box" id="chartDhwFuel"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-envelope" class="tab-panel" data-panel="envelope" hidden>
+    <div class="kpi-row">
+      <div class="kpi-card"><span class="kpi-label">Avg. ceiling insulation</span><span class="kpi-value" id="kpiCeilRsi">—</span><span class="kpi-unit">RSI (m²·K/W)</span></div>
+      <div class="kpi-card"><span class="kpi-label">Avg. wall insulation</span><span class="kpi-value" id="kpiWallRsi">—</span><span class="kpi-unit">RSI (m²·K/W)</span></div>
+      <div class="kpi-card"><span class="kpi-label">Avg. foundation wall insulation</span><span class="kpi-value" id="kpiFndWallRsi">—</span><span class="kpi-unit">RSI (m²·K/W)</span></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Avg. insulation levels by year built</h3><div class="chart-box" id="chartEnvelopeTrend"></div><p class="chart-note">Ceiling, main wall and foundation wall insulation (RSI, m²·K/W) — higher is better.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    Built from BC Energy Step Code evaluation data (NRCan dataset), aggregated to municipality / year-built level — no individual addresses or identifying details.
+    Source and refresh pipeline: <a href="https://github.com/">this repository</a>.
+  </footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var MIN_YEAR = 2014;
+  var MAX_YEAR = 2026;
+  var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi'];
+  var STEP_LABELS = { '0': 'Not achieved', '1': 'Step 1', '2': 'Step 2', '3': 'Step 3', '4': 'Step 4', '5': 'Step 5' };
+  var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f'];
+
+  var RAW = [];
+  var META = {};
+  var state = { city: '', region: '', yearFrom: MIN_YEAR, yearTo: MAX_YEAR };
+  var currentTab = 'overview';
+
+  function fmtNum(decimals) {
+    return function (n) {
+      if (n == null || isNaN(n)) return '—';
+      return n.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: 0 });
+    };
+  }
+  var fmt0 = fmtNum(0), fmt1 = fmtNum(1), fmt2 = fmtNum(2);
+  function fmtPct(n) { return (n == null || isNaN(n)) ? '—' : n.toFixed(1) + '%'; }
+  function stepLabel(key) { return STEP_LABELS[key] || ('Step ' + key); }
+
+  function includeUnknownYears(p) { return p.yearFrom <= MIN_YEAR && p.yearTo >= MAX_YEAR; }
+
+  function cellInRange(cell, p) {
+    if (p.region && cell.region !== p.region) return false;
+    if (p.city && cell.city !== p.city) return false;
+    if (typeof cell.year === 'number') {
+      if (cell.year < p.yearFrom || cell.year > p.yearTo) return false;
+    } else if (!includeUnknownYears(p)) {
+      return false;
+    }
+    return true;
+  }
+
+  function aggregateCells(rows, p, numericKeys, categoryKeys) {
+    var count = 0;
+    var sums = {}; numericKeys.forEach(function (k) { sums[k] = [0, 0]; });
+    var cats = {}; categoryKeys.forEach(function (k) { cats[k] = {}; });
+    for (var i = 0; i < rows.length; i++) {
+      var cell = rows[i];
+      if (!cellInRange(cell, p)) continue;
+      count += cell.count;
+      for (var ni = 0; ni < numericKeys.length; ni++) {
+        var k = numericKeys[ni];
+        var v = cell.num && cell.num[k];
+        if (v) { sums[k][0] += v[0]; sums[k][1] += v[1]; }
+      }
+      for (var ci = 0; ci < categoryKeys.length; ci++) {
+        var ck = categoryKeys[ci];
+        var hist = cell.cat && cell.cat[ck];
+        if (hist) {
+          for (var cat in hist) {
+            if (Object.prototype.hasOwnProperty.call(hist, cat)) cats[ck][cat] = (cats[ck][cat] || 0) + hist[cat];
+          }
+        }
+      }
+    }
+    var avg = {};
+    numericKeys.forEach(function (k) { avg[k] = sums[k][1] ? sums[k][0] / sums[k][1] : null; });
+    return { count: count, avg: avg, cats: cats };
+  }
+
+  function breakdownRows(rows, p, categoryKey, opts) {
+    opts = opts || {};
+    var order = opts.order || 'count';
+    var topN = opts.topN || 8;
+    var agg = aggregateCells(rows, p, [], [categoryKey]);
+    var hist = agg.cats[categoryKey] || {};
+    var entries = Object.keys(hist).map(function (k) { return [k, hist[k]]; });
+    var total = entries.reduce(function (a, e) { return a + e[1]; }, 0);
+    if (order === 'numeric') {
+      entries.sort(function (a, b) { return (parseFloat(a[0]) || 0) - (parseFloat(b[0]) || 0); });
+    } else {
+      entries.sort(function (a, b) { return b[1] - a[1]; });
+      if (entries.length > topN) {
+        var head = entries.slice(0, topN);
+        var restCount = entries.slice(topN).reduce(function (a, e) { return a + e[1]; }, 0);
+        entries = restCount ? head.concat([['Other', restCount]]) : head;
+      }
+    }
+    return entries.map(function (e) { return { category: String(e[0]), count: e[1], pct: total ? (100 * e[1] / total) : 0 }; });
+  }
+
+  function computeSummary() {
+    var agg = aggregateCells(RAW, state, NUMERIC_KEYS, ['heat_pump', 'cooling']);
+    var hp = agg.cats.heat_pump || {}, cl = agg.cats.cooling || {};
+    var hpTotal = Object.keys(hp).reduce(function (a, k) { return a + hp[k]; }, 0);
+    var clTotal = Object.keys(cl).reduce(function (a, k) { return a + cl[k]; }, 0);
+    return {
+      count: agg.count,
+      avgMEUI: agg.avg.meui, avgTEDI: agg.avg.tedi, avgACH: agg.avg.ach, avgGHG: agg.avg.ghg,
+      avgCeilRSI: agg.avg.ceil_rsi, avgWallRSI: agg.avg.wall_rsi, avgFndWallRSI: agg.avg.fndwall_rsi,
+      pctHeatPump: hpTotal ? 100 * (hp['Heat Pump'] || 0) / hpTotal : null,
+      pctCooled: clTotal ? 100 * (cl['Cooled'] || 0) / clTotal : null
+    };
+  }
+
+  function computeYearTrend() {
+    var byYear = {};
+    for (var i = 0; i < RAW.length; i++) {
+      var cell = RAW[i];
+      if (state.region && cell.region !== state.region) continue;
+      if (state.city && cell.city !== state.city) continue;
+      if (typeof cell.year !== 'number') continue;
+      if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
+      var acc = byYear[cell.year] || (byYear[cell.year] = { count: 0, num: {} });
+      acc.count += cell.count;
+      for (var ni = 0; ni < NUMERIC_KEYS.length; ni++) {
+        var k = NUMERIC_KEYS[ni];
+        var v = cell.num && cell.num[k];
+        if (!v) continue;
+        var pair = acc.num[k] || (acc.num[k] = [0, 0]);
+        pair[0] += v[0]; pair[1] += v[1];
+      }
+    }
+    var out = Object.keys(byYear).map(function (yearStr) {
+      var year = Number(yearStr), acc = byYear[yearStr];
+      var row = { year: year, count: acc.count };
+      NUMERIC_KEYS.forEach(function (k) {
+        var pair = acc.num[k];
+        row[k] = pair && pair[1] ? pair[0] / pair[1] : null;
+      });
+      return row;
+    });
+    out.sort(function (a, b) { return a.year - b.year; });
+    return out;
+  }
+
+  function computeTopCities() {
+    var byCity = {}, total = 0;
+    for (var i = 0; i < RAW.length; i++) {
+      var cell = RAW[i];
+      if (state.region && cell.region !== state.region) continue;
+      if (typeof cell.year === 'number') {
+        if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
+      } else if (!includeUnknownYears(state)) continue;
+      byCity[cell.city] = (byCity[cell.city] || 0) + cell.count;
+      total += cell.count;
+    }
+    return Object.keys(byCity).map(function (c) { return { category: c, count: byCity[c], pct: total ? 100 * byCity[c] / total : 0 }; })
+      .sort(function (a, b) { return b.count - a.count; }).slice(0, 15);
+  }
+
+  function computeRegionBreakdown() {
+    var byRegion = {}, total = 0;
+    for (var i = 0; i < RAW.length; i++) {
+      var cell = RAW[i];
+      if (typeof cell.year === 'number') {
+        if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
+      } else if (!includeUnknownYears(state)) continue;
+      byRegion[cell.region] = (byRegion[cell.region] || 0) + cell.count;
+      total += cell.count;
+    }
+    return Object.keys(byRegion).map(function (r) { return { category: r, count: byRegion[r], pct: total ? 100 * byRegion[r] / total : 0 }; })
+      .sort(function (a, b) { return b.count - a.count; }).slice(0, 15);
+  }
+
+  // ---- drawing ----
+
+  var tooltipEl;
+  function ensureTooltip() {
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'chart-tooltip';
+      tooltipEl.hidden = true;
+    }
+    return tooltipEl;
+  }
+  function showTooltip(container, html, px, py) {
+    var tip = ensureTooltip();
+    tip.innerHTML = html;
+    tip.hidden = false;
+    tip.style.opacity = '1';
+    if (tip.parentElement !== container) {
+      if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+      container.appendChild(tip);
+    }
+    var rect = container.getBoundingClientRect();
+    tip.style.left = Math.max(0, px - rect.left + 8) + 'px';
+    tip.style.top = Math.max(0, py - rect.top - 28) + 'px';
+  }
+  function hideTooltip() { if (tooltipEl) tooltipEl.style.opacity = '0'; }
+
+  function emptyState(svg, width, height, message) {
+    svg.append('text').attr('class', 'chart-empty').attr('x', width / 2).attr('y', height / 2)
+      .attr('text-anchor', 'middle').text(message || 'No data for this selection');
+  }
+
+  function ensureSvg(el, width, height, label) {
+    var svg = d3.select(el).select('svg');
+    if (svg.empty()) svg = d3.select(el).append('svg').attr('role', 'img');
+    svg.attr('width', width).attr('height', height).attr('viewBox', '0 0 ' + width + ' ' + height).attr('aria-label', label || 'Chart');
+    svg.selectAll('*').remove();
+    return svg;
+  }
+
+  function drawHBars(el, rows, opts) {
+    opts = opts || {};
+    var width = Math.max(el.clientWidth || 320, 260);
+    var rowH = 26;
+    var height = Math.max(60, rows.length * rowH + 20);
+    var svg = ensureSvg(el, width, height, opts.label);
+    if (!rows.length) { emptyState(svg, width, height); return; }
+
+    var labelW = Math.min(width * 0.42, 150);
+    var valueW = 54;
+    var left = labelW + 10;
+    var right = width - valueW - 10;
+    var max = d3.max(rows, function (d) { return d.count; }) || 1;
+    var x = d3.scaleLinear().domain([0, max]).range([0, right - left]);
+
+    var g = svg.append('g');
+    var rowSel = g.selectAll('g.hbar-row').data(rows).join('g').attr('class', 'hbar-row')
+      .attr('transform', function (d, i) { return 'translate(0,' + (i * rowH + 6) + ')'; });
+
+    rowSel.append('text').attr('x', labelW).attr('y', rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'end')
+      .style('fill', 'var(--fg)').style('font-size', '0.76rem').text(function (d) { return d.category; });
+
+    var bars = rowSel.append('rect')
+      .attr('x', left).attr('y', 2).attr('height', rowH - 8)
+      .attr('width', function (d) { return Math.max(1, x(d.count)); })
+      .style('fill', function (d) { return opts.highlight && d.category === opts.highlight ? COLORS[1] : COLORS[0]; })
+      .attr('rx', 3);
+
+    rowSel.append('text').attr('x', function (d) { return left + x(d.count) + 6; }).attr('y', rowH / 2).attr('dy', '0.32em')
+      .style('fill', 'var(--fg-muted)').style('font-size', '0.76rem')
+      .text(function (d) { return fmt0(d.count) + (opts.showPct ? ' (' + d.pct.toFixed(0) + '%)' : ''); });
+
+    if (opts.onClick) bars.style('cursor', 'pointer').on('click', function (event, d) { opts.onClick(d); });
+    bars.on('mousemove', function (event, d) {
+      showTooltip(el, '<b>' + d.category + '</b><br>' + fmt0(d.count) + ' homes (' + d.pct.toFixed(1) + '%)', event.clientX, event.clientY);
+    }).on('mouseleave', hideTooltip);
+  }
+
+  function drawVBars(el, rows, opts) {
+    opts = opts || {};
+    var width = Math.max(el.clientWidth || 320, 260);
+    var height = 220;
+    var margin = { top: 24, right: 12, bottom: 32, left: 40 };
+    var svg = ensureSvg(el, width, height, opts.label);
+    if (!rows.length) { emptyState(svg, width, height); return; }
+
+    var x = d3.scaleBand().domain(rows.map(function (d) { return d.category; })).range([margin.left, width - margin.right]).padding(0.25);
+    var max = d3.max(rows, function (d) { return d.count; }) || 1;
+    var y = d3.scaleLinear().domain([0, max * 1.18]).nice().range([height - margin.bottom, margin.top]);
+
+    var g = svg.append('g');
+    g.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')')
+      .call(d3.axisBottom(x).tickSize(0))
+      .call(function (gg) {
+        gg.select('.domain').remove();
+        gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem')
+          .text(function (d) { return opts.labelFn ? opts.labelFn(d) : d; });
+      });
+
+    var bars = g.selectAll('rect').data(rows).join('rect')
+      .attr('x', function (d) { return x(d.category); }).attr('width', x.bandwidth())
+      .attr('y', function (d) { return y(d.count); }).attr('height', function (d) { return (height - margin.bottom) - y(d.count); })
+      .attr('rx', 3).style('fill', COLORS[0]);
+
+    g.selectAll('text.value-label').data(rows).join('text').attr('class', 'value-label')
+      .attr('x', function (d) { return x(d.category) + x.bandwidth() / 2; }).attr('y', function (d) { return y(d.count) - 6; })
+      .attr('text-anchor', 'middle').style('fill', 'var(--fg-muted)').style('font-size', '0.74rem')
+      .text(function (d) { return fmt0(d.count); });
+
+    bars.on('mousemove', function (event, d) {
+      var label = opts.labelFn ? opts.labelFn(d.category) : d.category;
+      showTooltip(el, '<b>' + label + '</b><br>' + fmt0(d.count) + ' homes (' + d.pct.toFixed(1) + '%)', event.clientX, event.clientY);
+    }).on('mouseleave', hideTooltip);
+  }
+
+  function drawLines(el, rows, series, opts) {
+    opts = opts || {};
+    var width = Math.max(el.clientWidth || 320, 260);
+    var height = 240;
+    var margin = { top: 20, right: 16, bottom: 28, left: 46 };
+    var svg = ensureSvg(el, width, height, opts.label);
+    var withData = rows.filter(function (r) { return series.some(function (s) { return r[s.key] != null; }); });
+    if (!withData.length) { emptyState(svg, width, height); return; }
+
+    var x = d3.scalePoint().domain(rows.map(function (d) { return d.year; })).range([margin.left, width - margin.right]).padding(0.5);
+    var allVals = [];
+    series.forEach(function (s) { rows.forEach(function (r) { if (r[s.key] != null) allVals.push(r[s.key]); }); });
+    var maxVal = d3.max(allVals) || 1;
+    var y = d3.scaleLinear().domain([0, maxVal * 1.15]).nice().range([height - margin.bottom, margin.top]);
+
+    var g = svg.append('g');
+    g.append('g').selectAll('line').data(y.ticks(4)).join('line')
+      .attr('x1', margin.left).attr('x2', width - margin.right)
+      .attr('y1', function (d) { return y(d); }).attr('y2', function (d) { return y(d); }).style('stroke', 'var(--grid)');
+
+    g.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')')
+      .call(d3.axisBottom(x).tickSize(0).tickValues(x.domain().filter(function (d, i, arr) { return arr.length <= 8 || i % Math.ceil(arr.length / 8) === 0; })))
+      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
+
+    g.append('g').attr('transform', 'translate(' + margin.left + ',0)')
+      .call(d3.axisLeft(y).ticks(4).tickFormat(function (d) { return fmt0(d); }))
+      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('line').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
+
+    series.forEach(function (s, si) {
+      var color = s.color || COLORS[si % COLORS.length];
+      var line = d3.line().defined(function (d) { return d[s.key] != null; }).x(function (d) { return x(d.year); }).y(function (d) { return y(d[s.key]); });
+      g.append('path').datum(rows).attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2).attr('d', line);
+      var pts = rows.filter(function (d) { return d[s.key] != null; });
+      g.selectAll('circle.pt-' + si).data(pts).join('circle').attr('class', 'pt-' + si)
+        .attr('cx', function (d) { return x(d.year); }).attr('cy', function (d) { return y(d[s.key]); }).attr('r', 3.5).style('fill', color)
+        .on('mousemove', function (event, d) {
+          showTooltip(el, '<b>' + s.name + ', ' + d.year + '</b><br>' + fmt1(d[s.key]) + (s.unit ? ' ' + s.unit : ''), event.clientX, event.clientY);
+        }).on('mouseleave', hideTooltip);
+    });
+
+    if (series.length > 1) {
+      var legend = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + (margin.top - 10) + ')');
+      var lx = 0;
+      series.forEach(function (s, si) {
+        var color = s.color || COLORS[si % COLORS.length];
+        var grp = legend.append('g').attr('transform', 'translate(' + lx + ',0)');
+        grp.append('rect').attr('width', 9).attr('height', 9).attr('y', -8).style('fill', color).attr('rx', 2);
+        var label = grp.append('text').attr('x', 13).style('fill', 'var(--axis)').style('font-size', '0.74rem').text(s.name);
+        lx += 13 + (label.node().getComputedTextLength ? label.node().getComputedTextLength() : 60) + 16;
+      });
+    }
+  }
+
+  // ---- rendering ----
+
+  function setText(id, value) { var el = document.getElementById(id); if (el) el.textContent = value; }
+
+  function renderKpis() {
+    var s = computeSummary();
+    setText('kpiCount', fmt0(s.count));
+    setText('kpiMeuiOv', fmt1(s.avgMEUI)); setText('kpiMeui', fmt1(s.avgMEUI));
+    setText('kpiTediOv', fmt1(s.avgTEDI)); setText('kpiTedi', fmt1(s.avgTEDI));
+    setText('kpiAchOv', fmt2(s.avgACH)); setText('kpiAch', fmt2(s.avgACH));
+    setText('kpiGhgOv', fmt0(s.avgGHG)); setText('kpiGhg', fmt0(s.avgGHG));
+    setText('kpiCeilRsi', fmt2(s.avgCeilRSI));
+    setText('kpiWallRsi', fmt2(s.avgWallRSI));
+    setText('kpiFndWallRsi', fmt2(s.avgFndWallRSI));
+    setText('pctHeatPump', fmtPct(s.pctHeatPump));
+    setText('pctCooled', fmtPct(s.pctCooled));
+    var hpFill = document.getElementById('heatPumpFill'); if (hpFill) hpFill.style.width = (s.pctHeatPump || 0) + '%';
+    var clFill = document.getElementById('cooledFill'); if (clFill) clFill.style.width = (s.pctCooled || 0) + '%';
+
+    var place = state.city ? state.city : (state.region ? state.region : 'British Columbia');
+    setText('subtitle', fmt0(s.count) + ' homes evaluated in ' + place + ', built ' + state.yearFrom + '–' + state.yearTo + '.');
+  }
+
+  function renderTab(tab) {
+    var el;
+    if (tab === 'overview') {
+      el = document.getElementById('chartEvalsByYear');
+      if (el) drawVBars(el, computeYearTrend().map(function (d) { return { category: String(d.year), count: d.count, pct: 0 }; }), { label: 'Evaluations by year built' });
+      el = document.getElementById('chartTopRegions');
+      if (el) drawHBars(el, computeRegionBreakdown(), {
+        label: 'Top regional districts', highlight: state.region,
+        onClick: function (d) { setState({ region: state.region === d.category ? '' : d.category, city: '' }); }
+      });
+      el = document.getElementById('chartTopCities');
+      if (el) drawHBars(el, computeTopCities(), {
+        label: 'Top municipalities', showPct: true, highlight: state.city,
+        onClick: function (d) { setState({ city: state.city === d.category ? '' : d.category }); }
+      });
+      el = document.getElementById('chartStepBreakdown');
+      if (el) drawVBars(el, breakdownRows(RAW, state, 'step_achieved', { order: 'numeric' }), { label: 'Step Code achieved', labelFn: stepLabel });
+    } else if (tab === 'meui') {
+      el = document.getElementById('chartMeuiTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'meui', name: 'MEUI', unit: 'kWh/m²/yr' }], { label: 'MEUI trend' });
+      el = document.getElementById('chartMeuiStep'); if (el) drawVBars(el, breakdownRows(RAW, state, 'meui_step', { order: 'numeric' }), { label: 'MEUI step', labelFn: stepLabel });
+    } else if (tab === 'tedi') {
+      el = document.getElementById('chartTediTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'tedi', name: 'TEDI', unit: 'kWh/m²/yr' }], { label: 'TEDI trend' });
+      el = document.getElementById('chartTediStep'); if (el) drawVBars(el, breakdownRows(RAW, state, 'tedi_step', { order: 'numeric' }), { label: 'TEDI step', labelFn: stepLabel });
+    } else if (tab === 'airtightness') {
+      el = document.getElementById('chartAchTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'ach', name: 'ACH50', unit: 'ACH' }], { label: 'Airtightness trend' });
+      el = document.getElementById('chartAchStep'); if (el) drawVBars(el, breakdownRows(RAW, state, 'ach_step', { order: 'numeric' }), { label: 'ACH step', labelFn: stepLabel });
+    } else if (tab === 'ghg') {
+      el = document.getElementById('chartGhgTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'ghg', name: 'GHGs', unit: 'kg CO2e/yr' }], { label: 'GHG trend' });
+      el = document.getElementById('chartElBreakdown'); if (el) drawVBars(el, breakdownRows(RAW, state, 'el_achieved', { order: 'numeric' }), { label: 'EL achieved', labelFn: stepLabel });
+    } else if (tab === 'heating') {
+      el = document.getElementById('chartHeatingSystem'); if (el) drawHBars(el, breakdownRows(RAW, state, 'heating_system'), { label: 'Heating system', showPct: true });
+      el = document.getElementById('chartHeatingFuel'); if (el) drawHBars(el, breakdownRows(RAW, state, 'heating_fuel'), { label: 'Heating fuel', showPct: true });
+    } else if (tab === 'cooling') {
+      el = document.getElementById('chartCoolingType'); if (el) drawHBars(el, breakdownRows(RAW, state, 'cooling_type'), { label: 'Cooling type', showPct: true });
+    } else if (tab === 'dhw') {
+      el = document.getElementById('chartDhwType'); if (el) drawHBars(el, breakdownRows(RAW, state, 'dhw_type'), { label: 'DHW type', showPct: true });
+      el = document.getElementById('chartDhwFuel'); if (el) drawHBars(el, breakdownRows(RAW, state, 'dhw_fuel'), { label: 'DHW fuel', showPct: true });
+    } else if (tab === 'envelope') {
+      el = document.getElementById('chartEnvelopeTrend');
+      if (el) drawLines(el, computeYearTrend(), [
+        { key: 'ceil_rsi', name: 'Ceiling', unit: 'RSI' }, { key: 'wall_rsi', name: 'Main wall', unit: 'RSI' }, { key: 'fndwall_rsi', name: 'Fnd. wall', unit: 'RSI' }
+      ], { label: 'Envelope trend' });
+    }
+  }
+
+  function renderFilterOptions() {
+    var regionTotals = {};
+    RAW.forEach(function (c) { regionTotals[c.region] = (regionTotals[c.region] || 0) + c.count; });
+    var regions = Object.keys(regionTotals).sort(function (a, b) { return regionTotals[b] - regionTotals[a]; });
+    var regionSel = document.getElementById('regionFilter');
+    regionSel.replaceChildren(new Option('All regional districts', ''));
+    regions.forEach(function (r) { regionSel.appendChild(new Option(r + ' (' + fmt0(regionTotals[r]) + ')', r)); });
+    regionSel.value = state.region;
+
+    var cityTotals = {};
+    RAW.forEach(function (c) { if (!state.region || c.region === state.region) cityTotals[c.city] = (cityTotals[c.city] || 0) + c.count; });
+    var cities = Object.keys(cityTotals).sort(function (a, b) { return cityTotals[b] - cityTotals[a]; });
+    var citySel = document.getElementById('cityFilter');
+    citySel.replaceChildren(new Option(state.region ? 'All in this regional district' : 'All municipalities', ''));
+    cities.forEach(function (c) { citySel.appendChild(new Option(c + ' (' + fmt0(cityTotals[c]) + ')', c)); });
+    citySel.value = cities.indexOf(state.city) >= 0 ? state.city : '';
+
+    var years = []; for (var y = MIN_YEAR; y <= MAX_YEAR; y++) years.push(y);
+    var fromSel = document.getElementById('yearFromFilter');
+    var toSel = document.getElementById('yearToFilter');
+    fromSel.replaceChildren.apply(fromSel, years.map(function (y) { return new Option(String(y), String(y)); }));
+    toSel.replaceChildren.apply(toSel, years.map(function (y) { return new Option(String(y), String(y)); }));
+    fromSel.value = String(state.yearFrom);
+    toSel.value = String(state.yearTo);
+  }
+
+  function renderAll() {
+    renderFilterOptions();
+    renderKpis();
+    renderTab(currentTab);
+  }
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    renderAll();
+  }
+
+  // ---- controls ----
+
+  document.getElementById('regionFilter').addEventListener('change', function () { setState({ region: this.value, city: '' }); });
+  document.getElementById('cityFilter').addEventListener('change', function () { setState({ city: this.value }); });
+  document.getElementById('yearFromFilter').addEventListener('change', function () { setState({ yearFrom: Math.min(Number(this.value), state.yearTo) }); });
+  document.getElementById('yearToFilter').addEventListener('change', function () { setState({ yearTo: Math.max(Number(this.value), state.yearFrom) }); });
+  document.getElementById('resetFilters').addEventListener('click', function () { setState({ city: '', region: '', yearFrom: MIN_YEAR, yearTo: MAX_YEAR }); });
+
+  document.getElementById('tabNav').addEventListener('click', function (event) {
+    var btn = event.target.closest('.tab-btn');
+    if (!btn) return;
+    var tab = btn.getAttribute('data-tab');
+    currentTab = tab;
+    document.querySelectorAll('.tab-panel').forEach(function (sec) { sec.hidden = sec.getAttribute('data-panel') !== tab; });
+    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
+    location.hash = tab;
+    renderTab(tab);
+  });
+
+  window.addEventListener('resize', function () { renderTab(currentTab); });
+
+  // ---- boot ----
+
+  fetch('data.json').then(function (r) { return r.json(); }).then(function (json) {
+    META = json;
+    RAW = json.cells || [];
+    var years = (json.years || []).filter(function (y) { return typeof y === 'number'; });
+    if (years.length) { MIN_YEAR = Math.min.apply(null, years); MAX_YEAR = Math.max.apply(null, years); }
+    state.yearFrom = MIN_YEAR; state.yearTo = MAX_YEAR;
+
+    var genDate = json.generated_at ? json.generated_at.slice(0, 10) : 'unknown date';
+    document.getElementById('metaNote').textContent =
+      fmt0(json.total_rows || RAW.length) + ' home energy evaluations from "' + (json.source_file || 'the source workbook') + '", extracted ' + genDate + '.';
+
+    var initialTab = (location.hash || '').replace('#', '');
+    var validTabs = Array.from(document.querySelectorAll('.tab-btn')).map(function (b) { return b.getAttribute('data-tab'); });
+    if (validTabs.indexOf(initialTab) >= 0) {
+      currentTab = initialTab;
+      document.querySelectorAll('.tab-panel').forEach(function (sec) { sec.hidden = sec.getAttribute('data-panel') !== initialTab; });
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === initialTab); });
+    }
+
+    renderAll();
+  }).catch(function (err) {
+    document.getElementById('subtitle').textContent = 'Could not load data.json: ' + err.message;
+  });
+})();
+</script>
+</body>
+</html>
