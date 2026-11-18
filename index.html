@@ -601,10 +601,20 @@
     }
   }
 
+  // Top N by entry count (most to least), then a divider, then the rest alphabetically.
+  function buildRankedOptions(totals, topN) {
+    var entries = Object.keys(totals).map(function (k) { return { key: k, count: totals[k] }; });
+    var byCount = entries.slice().sort(function (a, b) { return b.count - a.count; });
+    var top = byCount.slice(0, topN);
+    var topSet = {}; top.forEach(function (e) { topSet[e.key] = true; });
+    var rest = entries.filter(function (e) { return !topSet[e.key]; }).sort(function (a, b) { return a.key.localeCompare(b.key); });
+    return { top: top, rest: rest };
+  }
+
   function renderFilterOptions() {
     var regionTotals = {};
     RAW.forEach(function (c) { regionTotals[c.region] = (regionTotals[c.region] || 0) + c.count; });
-    var regions = Object.keys(regionTotals).sort(function (a, b) { return regionTotals[b] - regionTotals[a]; });
+    var regions = Object.keys(regionTotals).sort(function (a, b) { return a.localeCompare(b); });
     var regionSel = document.getElementById('regionFilter');
     regionSel.replaceChildren(new Option('All regional districts', ''));
     regions.forEach(function (r) { regionSel.appendChild(new Option(r + ' (' + fmt0(regionTotals[r]) + ')', r)); });
@@ -612,11 +622,17 @@
 
     var cityTotals = {};
     RAW.forEach(function (c) { if (!state.region || c.region === state.region) cityTotals[c.city] = (cityTotals[c.city] || 0) + c.count; });
-    var cities = Object.keys(cityTotals).sort(function (a, b) { return a.localeCompare(b); });
+    var cityOpts = buildRankedOptions(cityTotals, 10);
     var citySel = document.getElementById('cityFilter');
     citySel.replaceChildren(new Option(state.region ? 'All in this regional district' : 'All municipalities', ''));
-    cities.forEach(function (c) { citySel.appendChild(new Option(c + ' (' + fmt0(cityTotals[c]) + ')', c)); });
-    citySel.value = cities.indexOf(state.city) >= 0 ? state.city : '';
+    cityOpts.top.forEach(function (e) { citySel.appendChild(new Option(e.key + ' (' + fmt0(e.count) + ')', e.key)); });
+    if (cityOpts.top.length && cityOpts.rest.length) {
+      var divider = new Option('──────────', '');
+      divider.disabled = true;
+      citySel.appendChild(divider);
+    }
+    cityOpts.rest.forEach(function (e) { citySel.appendChild(new Option(e.key + ' (' + fmt0(e.count) + ')', e.key)); });
+    citySel.value = Object.prototype.hasOwnProperty.call(cityTotals, state.city) ? state.city : '';
 
     var years = []; for (var y = MIN_YEAR; y <= MAX_YEAR; y++) years.push(y);
     var fromSel = document.getElementById('yearFromFilter');
