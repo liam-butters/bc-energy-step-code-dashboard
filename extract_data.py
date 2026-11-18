@@ -169,7 +169,7 @@ def main():
     city_counts = defaultdict(int)
     region_counts = defaultdict(int)
     year_counts = defaultdict(int)
-    unmapped_cities = defaultdict(int)
+    excluded_unmapped = defaultdict(int)
     total_rows = 0
 
     print('Streaming data rows (this can take a minute or two) ...')
@@ -195,14 +195,16 @@ def main():
 
             if not rowvals:
                 continue
-            total_rows += 1
 
             city = normalize_city(rowvals.get(CITY_FIELD))
             year = normalize_year(rowvals.get(YEAR_FIELD))
             year_key = year if year is not None else 'Unknown'
             region = CITY_TO_REGION.get(city, UNMAPPED_LABEL)
-            if region == UNMAPPED_LABEL and city != 'Unknown':
-                unmapped_cities[city] += 1
+
+            if region == UNMAPPED_LABEL:
+                excluded_unmapped[city] += 1
+                continue
+            total_rows += 1
 
             city_counts[city] += 1
             region_counts[region] += 1
@@ -255,11 +257,11 @@ def main():
     size_mb = OUT_PATH.stat().st_size / 1_000_000
     print(f'Wrote {OUT_PATH} ({size_mb:.2f} MB)')
 
-    if unmapped_cities:
-        total_unmapped = sum(unmapped_cities.values())
-        print(f'\n{total_unmapped} homes ({len(unmapped_cities)} distinct city values) have no regional '
-              f'district mapping in regions.py - grouped under "{UNMAPPED_LABEL}":')
-        for c, n in sorted(unmapped_cities.items(), key=lambda kv: -kv[1]):
+    if excluded_unmapped:
+        total_excluded = sum(excluded_unmapped.values())
+        print(f'\nExcluded {total_excluded} homes ({len(excluded_unmapped)} distinct city values) with no '
+              f'regional district mapping in regions.py - add them there to include them:')
+        for c, n in sorted(excluded_unmapped.items(), key=lambda kv: -kv[1]):
             print(f'  {n:5d}  {c}')
 
 

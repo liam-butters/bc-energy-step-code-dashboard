@@ -94,12 +94,12 @@
   .kpi-value { font-size: 1.6rem; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.1; }
   .kpi-unit { display: block; font-size: 0.74rem; color: var(--fg-muted); margin-top: 2px; }
 
-  .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 14px; }
+  .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 14px; }
   .chart-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
   .chart-card.wide { grid-column: 1 / -1; }
   .chart-card h3 { margin: 0 0 10px 0; font-size: 0.92rem; font-weight: 600; }
   .chart-card p.chart-note { margin: 8px 0 0 0; font-size: 0.76rem; color: var(--fg-muted); }
-  .chart-box { position: relative; min-height: 220px; }
+  .chart-box { position: relative; min-height: 230px; }
   .chart-box svg text { font-family: inherit; }
   .chart-empty { fill: var(--fg-muted); font-size: 0.78rem; }
 
@@ -114,6 +114,7 @@
   .progress-top .progress-value { font-size: 1.3rem; font-weight: 650; font-variant-numeric: tabular-nums; }
   .progress-track { height: 10px; border-radius: 999px; background: var(--grid); overflow: hidden; }
   .progress-fill { height: 100%; border-radius: 999px; background: var(--accent); width: 0%; transition: width 0.4s ease-out; }
+  .progress-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
 
   footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 0.78rem; }
   footer a { color: var(--accent); }
@@ -149,109 +150,83 @@
   </div>
 
   <nav class="tabs" id="tabNav">
-    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn active" data-tab="airtightness">Airtightness</button>
     <button class="tab-btn" data-tab="meui">MEUI</button>
     <button class="tab-btn" data-tab="tedi">TEDI</button>
-    <button class="tab-btn" data-tab="airtightness">Airtightness</button>
-    <button class="tab-btn" data-tab="ghg">GHG &amp; Step Code</button>
-    <button class="tab-btn" data-tab="heating">Heating</button>
-    <button class="tab-btn" data-tab="cooling">Cooling</button>
-    <button class="tab-btn" data-tab="dhw">Hot water</button>
-    <button class="tab-btn" data-tab="envelope">Envelope</button>
+    <button class="tab-btn" data-tab="emissions">Emissions</button>
+    <button class="tab-btn" data-tab="heating">Heating &amp; cooling</button>
+    <button class="tab-btn" data-tab="dhw">Water heating</button>
   </nav>
 
-  <section id="tab-overview" class="tab-panel" data-panel="overview">
-    <div class="kpi-row">
-      <div class="kpi-card"><span class="kpi-label">Homes evaluated</span><span class="kpi-value" id="kpiCount">—</span></div>
-      <div class="kpi-card"><span class="kpi-label">Avg. MEUI</span><span class="kpi-value" id="kpiMeuiOv">—</span><span class="kpi-unit">kWh/m²/yr</span></div>
-      <div class="kpi-card"><span class="kpi-label">Avg. TEDI</span><span class="kpi-value" id="kpiTediOv">—</span><span class="kpi-unit">kWh/m²/yr</span></div>
-      <div class="kpi-card"><span class="kpi-label">Avg. airtightness</span><span class="kpi-value" id="kpiAchOv">—</span><span class="kpi-unit">ACH50</span></div>
-      <div class="kpi-card"><span class="kpi-label">Avg. GHGs</span><span class="kpi-value" id="kpiGhgOv">—</span><span class="kpi-unit">kg CO2e/yr</span></div>
-    </div>
+  <section id="tab-airtightness" class="tab-panel" data-panel="airtightness">
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Evaluations by year built</h3><div class="chart-box" id="chartEvalsByYear"></div></div>
-      <div class="chart-card"><h3>Top regional districts</h3><div class="chart-box" id="chartTopRegions"></div><p class="chart-note">Click a bar to filter the whole dashboard to that regional district.</p></div>
-    </div>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Top municipalities</h3><div class="chart-box" id="chartTopCities"></div><p class="chart-note">Click a bar to filter to that municipality. Scoped by the regional district and year-built filters.</p></div>
-    </div>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Step Code achieved (overall)</h3><div class="chart-box" id="chartStepBreakdown"></div></div>
+      <div class="chart-card"><h3>Avg. ACH50 by year built</h3><div class="chart-box" id="chartAchAvg"></div></div>
+      <div class="chart-card"><h3>Airtightness step achieved, by year built</h3><div class="chart-box" id="chartAchStep"></div><p class="chart-note">% of homes built that year at each airtightness step.</p></div>
     </div>
   </section>
 
   <section id="tab-meui" class="tab-panel" data-panel="meui" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. MEUI, current filters</span><span class="kpi-value" id="kpiMeui">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. MEUI by year built</h3><div class="chart-box" id="chartMeuiTrend"></div></div>
-      <div class="chart-card"><h3>MEUI step achieved</h3><div class="chart-box" id="chartMeuiStep"></div></div>
+      <div class="chart-card"><h3>Avg. MEUI by year built</h3><div class="chart-box" id="chartMeuiAvg"></div></div>
+      <div class="chart-card"><h3>MEUI step achieved, by year built</h3><div class="chart-box" id="chartMeuiStep"></div><p class="chart-note">% of homes built that year at each MEUI step.</p></div>
     </div>
   </section>
 
   <section id="tab-tedi" class="tab-panel" data-panel="tedi" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. TEDI, current filters</span><span class="kpi-value" id="kpiTedi">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. TEDI by year built</h3><div class="chart-box" id="chartTediTrend"></div></div>
-      <div class="chart-card"><h3>TEDI step achieved</h3><div class="chart-box" id="chartTediStep"></div></div>
+      <div class="chart-card"><h3>Avg. TEDI by year built</h3><div class="chart-box" id="chartTediAvg"></div></div>
+      <div class="chart-card"><h3>TEDI step achieved, by year built</h3><div class="chart-box" id="chartTediStep"></div><p class="chart-note">% of homes built that year at each TEDI step.</p></div>
     </div>
   </section>
 
-  <section id="tab-airtightness" class="tab-panel" data-panel="airtightness" hidden>
-    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
-    <div class="chart-row">
-      <div class="chart-card"><h3>Avg. ACH50 by year built</h3><div class="chart-box" id="chartAchTrend"></div></div>
-      <div class="chart-card"><h3>Airtightness step achieved</h3><div class="chart-box" id="chartAchStep"></div></div>
-    </div>
-  </section>
-
-  <section id="tab-ghg" class="tab-panel" data-panel="ghg" hidden>
+  <section id="tab-emissions" class="tab-panel" data-panel="emissions" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. GHGs, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/yr</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. GHGs by year built</h3><div class="chart-box" id="chartGhgTrend"></div></div>
-      <div class="chart-card"><h3>Energy Limit (EL) achieved</h3><div class="chart-box" id="chartElBreakdown"></div></div>
+      <div class="chart-card"><h3>Avg. GHGs by year built</h3><div class="chart-box" id="chartGhgAvg"></div></div>
+      <div class="chart-card"><h3>Energy Limit achieved, by year built</h3><div class="chart-box" id="chartElStep"></div><p class="chart-note">% of homes built that year at each Energy Limit (GHG) level.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Overall Step Code achieved, by year built</h3><div class="chart-box" id="chartOverallStep"></div><p class="chart-note">% of homes built that year at each overall BC Energy Step Code step.</p></div>
     </div>
   </section>
 
   <section id="tab-heating" class="tab-panel" data-panel="heating" hidden>
-    <div class="progress-row">
-      <div class="progress-top"><span class="kpi-label">Homes with a heat pump</span><span class="progress-value" id="pctHeatPump">—</span></div>
-      <div class="progress-track"><div class="progress-fill" id="heatPumpFill"></div></div>
+    <div class="progress-pair">
+      <div class="progress-row">
+        <div class="progress-top"><span class="kpi-label">Homes with a heat pump</span><span class="progress-value" id="pctHeatPump">—</span></div>
+        <div class="progress-track"><div class="progress-fill" id="heatPumpFill"></div></div>
+      </div>
+      <div class="progress-row">
+        <div class="progress-top"><span class="kpi-label">Homes with cooling</span><span class="progress-value" id="pctCooled">—</span></div>
+        <div class="progress-track"><div class="progress-fill" id="cooledFill"></div></div>
+      </div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Primary heating system</h3><div class="chart-box" id="chartHeatingSystem"></div></div>
-      <div class="chart-card"><h3>Primary heating fuel</h3><div class="chart-box" id="chartHeatingFuel"></div></div>
+      <div class="chart-card"><h3>Heat pump adoption, by year built</h3><div class="chart-box" id="chartHeatPumpByYear"></div></div>
+      <div class="chart-card"><h3>Cooling adoption, by year built</h3><div class="chart-box" id="chartCoolingByYear"></div></div>
     </div>
-  </section>
-
-  <section id="tab-cooling" class="tab-panel" data-panel="cooling" hidden>
-    <div class="progress-row">
-      <div class="progress-top"><span class="kpi-label">Homes with cooling</span><span class="progress-value" id="pctCooled">—</span></div>
-      <div class="progress-track"><div class="progress-fill" id="cooledFill"></div></div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Primary heating system, by year built</h3><div class="chart-box" id="chartHeatingSystem"></div></div>
+      <div class="chart-card"><h3>Primary heating fuel, by year built</h3><div class="chart-box" id="chartHeatingFuel"></div></div>
     </div>
-    <div class="chart-row"><div class="chart-card wide"><h3>Cooling equipment type</h3><div class="chart-box" id="chartCoolingType"></div></div></div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Cooling equipment type, by year built</h3><div class="chart-box" id="chartCoolingType"></div></div>
+    </div>
   </section>
 
   <section id="tab-dhw" class="tab-panel" data-panel="dhw" hidden>
     <div class="chart-row">
-      <div class="chart-card"><h3>Domestic hot water system type</h3><div class="chart-box" id="chartDhwType"></div></div>
-      <div class="chart-card"><h3>Domestic hot water fuel</h3><div class="chart-box" id="chartDhwFuel"></div></div>
-    </div>
-  </section>
-
-  <section id="tab-envelope" class="tab-panel" data-panel="envelope" hidden>
-    <div class="kpi-row">
-      <div class="kpi-card"><span class="kpi-label">Avg. ceiling insulation</span><span class="kpi-value" id="kpiCeilRsi">—</span><span class="kpi-unit">RSI (m²·K/W)</span></div>
-      <div class="kpi-card"><span class="kpi-label">Avg. wall insulation</span><span class="kpi-value" id="kpiWallRsi">—</span><span class="kpi-unit">RSI (m²·K/W)</span></div>
-      <div class="kpi-card"><span class="kpi-label">Avg. foundation wall insulation</span><span class="kpi-value" id="kpiFndWallRsi">—</span><span class="kpi-unit">RSI (m²·K/W)</span></div>
-    </div>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Avg. insulation levels by year built</h3><div class="chart-box" id="chartEnvelopeTrend"></div><p class="chart-note">Ceiling, main wall and foundation wall insulation (RSI, m²·K/W) — higher is better.</p></div>
+      <div class="chart-card"><h3>Water heating system type, by year built</h3><div class="chart-box" id="chartDhwType"></div></div>
+      <div class="chart-card"><h3>Water heating fuel, by year built</h3><div class="chart-box" id="chartDhwFuel"></div></div>
     </div>
   </section>
 
   <footer>
     Built from BC Energy Step Code evaluation data (NRCan dataset), aggregated to municipality / year-built level — no individual addresses or identifying details.
-    Source and refresh pipeline: <a href="https://github.com/">this repository</a>.
+    Source and refresh pipeline: <a href="https://github.com/liam-butters/bc-energy-step-code-dashboard">this repository</a>.
   </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -262,13 +237,11 @@
   var MIN_YEAR = 2014;
   var MAX_YEAR = 2026;
   var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi'];
-  var STEP_LABELS = { '0': 'Not achieved', '1': 'Step 1', '2': 'Step 2', '3': 'Step 3', '4': 'Step 4', '5': 'Step 5' };
-  var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f'];
+  var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f', '#4a9bb0', '#a65d6b'];
 
   var RAW = [];
-  var META = {};
   var state = { city: '', region: '', yearFrom: MIN_YEAR, yearTo: MAX_YEAR };
-  var currentTab = 'overview';
+  var currentTab = 'airtightness';
 
   function fmtNum(decimals) {
     return function (n) {
@@ -278,7 +251,9 @@
   }
   var fmt0 = fmtNum(0), fmt1 = fmtNum(1), fmt2 = fmtNum(2);
   function fmtPct(n) { return (n == null || isNaN(n)) ? '—' : n.toFixed(1) + '%'; }
-  function stepLabel(key) { return STEP_LABELS[key] || ('Step ' + key); }
+  function stepLabel(key) { return key === '0' ? 'Fail' : ('Step ' + key); }
+  function elLabel(key) { return 'EL-' + key; }
+  function asIs(key) { return key; }
 
   function includeUnknownYears(p) { return p.yearFrom <= MIN_YEAR && p.yearTo >= MAX_YEAR; }
 
@@ -321,27 +296,6 @@
     return { count: count, avg: avg, cats: cats };
   }
 
-  function breakdownRows(rows, p, categoryKey, opts) {
-    opts = opts || {};
-    var order = opts.order || 'count';
-    var topN = opts.topN || 8;
-    var agg = aggregateCells(rows, p, [], [categoryKey]);
-    var hist = agg.cats[categoryKey] || {};
-    var entries = Object.keys(hist).map(function (k) { return [k, hist[k]]; });
-    var total = entries.reduce(function (a, e) { return a + e[1]; }, 0);
-    if (order === 'numeric') {
-      entries.sort(function (a, b) { return (parseFloat(a[0]) || 0) - (parseFloat(b[0]) || 0); });
-    } else {
-      entries.sort(function (a, b) { return b[1] - a[1]; });
-      if (entries.length > topN) {
-        var head = entries.slice(0, topN);
-        var restCount = entries.slice(topN).reduce(function (a, e) { return a + e[1]; }, 0);
-        entries = restCount ? head.concat([['Other', restCount]]) : head;
-      }
-    }
-    return entries.map(function (e) { return { category: String(e[0]), count: e[1], pct: total ? (100 * e[1] / total) : 0 }; });
-  }
-
   function computeSummary() {
     var agg = aggregateCells(RAW, state, NUMERIC_KEYS, ['heat_pump', 'cooling']);
     var hp = agg.cats.heat_pump || {}, cl = agg.cats.cooling || {};
@@ -350,7 +304,6 @@
     return {
       count: agg.count,
       avgMEUI: agg.avg.meui, avgTEDI: agg.avg.tedi, avgACH: agg.avg.ach, avgGHG: agg.avg.ghg,
-      avgCeilRSI: agg.avg.ceil_rsi, avgWallRSI: agg.avg.wall_rsi, avgFndWallRSI: agg.avg.fndwall_rsi,
       pctHeatPump: hpTotal ? 100 * (hp['Heat Pump'] || 0) / hpTotal : null,
       pctCooled: clTotal ? 100 * (cl['Cooled'] || 0) / clTotal : null
     };
@@ -360,10 +313,8 @@
     var byYear = {};
     for (var i = 0; i < RAW.length; i++) {
       var cell = RAW[i];
-      if (state.region && cell.region !== state.region) continue;
-      if (state.city && cell.city !== state.city) continue;
+      if (!cellInRange(cell, state)) continue;
       if (typeof cell.year !== 'number') continue;
-      if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
       var acc = byYear[cell.year] || (byYear[cell.year] = { count: 0, num: {} });
       acc.count += cell.count;
       for (var ni = 0; ni < NUMERIC_KEYS.length; ni++) {
@@ -387,51 +338,68 @@
     return out;
   }
 
-  function computeTopCities() {
-    var byCity = {}, total = 0;
+  // Rows -> { years, catKeys, rows: [{year, total, segs: [{category, count, pct}]}] }
+  // for a 100%-stacked "mix of category, by year" chart.
+  function computeYearCategoryBreakdown(categoryKey, opts) {
+    opts = opts || {};
+    var order = opts.order || 'count';
+    var topN = opts.topN || 6;
+    var byYear = {};
     for (var i = 0; i < RAW.length; i++) {
       var cell = RAW[i];
       if (state.region && cell.region !== state.region) continue;
-      if (typeof cell.year === 'number') {
-        if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
-      } else if (!includeUnknownYears(state)) continue;
-      byCity[cell.city] = (byCity[cell.city] || 0) + cell.count;
-      total += cell.count;
+      if (state.city && cell.city !== state.city) continue;
+      if (typeof cell.year !== 'number') continue;
+      if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
+      var hist = cell.cat && cell.cat[categoryKey];
+      if (!hist) continue;
+      var acc = byYear[cell.year] || (byYear[cell.year] = {});
+      for (var cat in hist) { if (Object.prototype.hasOwnProperty.call(hist, cat)) acc[cat] = (acc[cat] || 0) + hist[cat]; }
     }
-    return Object.keys(byCity).map(function (c) { return { category: c, count: byCity[c], pct: total ? 100 * byCity[c] / total : 0 }; })
-      .sort(function (a, b) { return b.count - a.count; }).slice(0, 15);
-  }
 
-  function computeRegionBreakdown() {
-    var byRegion = {}, total = 0;
-    for (var i = 0; i < RAW.length; i++) {
-      var cell = RAW[i];
-      if (typeof cell.year === 'number') {
-        if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
-      } else if (!includeUnknownYears(state)) continue;
-      byRegion[cell.region] = (byRegion[cell.region] || 0) + cell.count;
-      total += cell.count;
+    var totals = {};
+    Object.keys(byYear).forEach(function (y) {
+      Object.keys(byYear[y]).forEach(function (c) { totals[c] = (totals[c] || 0) + byYear[y][c]; });
+    });
+    var catKeys = Object.keys(totals);
+    if (order === 'numeric') {
+      catKeys.sort(function (a, b) { return (parseFloat(a) || 0) - (parseFloat(b) || 0); });
+    } else {
+      catKeys.sort(function (a, b) { return totals[b] - totals[a]; });
     }
-    return Object.keys(byRegion).map(function (r) { return { category: r, count: byRegion[r], pct: total ? 100 * byRegion[r] / total : 0 }; })
-      .sort(function (a, b) { return b.count - a.count; }).slice(0, 15);
+    var keyMap = {};
+    var finalKeys;
+    if (order !== 'numeric' && catKeys.length > topN) {
+      finalKeys = catKeys.slice(0, topN).concat(['Other']);
+      catKeys.forEach(function (c, i) { keyMap[c] = i < topN ? c : 'Other'; });
+    } else {
+      finalKeys = catKeys.slice();
+      catKeys.forEach(function (c) { keyMap[c] = c; });
+    }
+
+    var years = Object.keys(byYear).map(Number).sort(function (a, b) { return a - b; });
+    var rows = years.map(function (year) {
+      var raw = byYear[year];
+      var grouped = {};
+      finalKeys.forEach(function (k) { grouped[k] = 0; });
+      Object.keys(raw).forEach(function (c) { grouped[keyMap[c]] += raw[c]; });
+      var total = finalKeys.reduce(function (a, k) { return a + grouped[k]; }, 0);
+      var segs = finalKeys.map(function (k) { return { category: k, count: grouped[k], pct: total ? 100 * grouped[k] / total : 0 }; });
+      return { year: year, total: total, segs: segs };
+    });
+    return { years: years, catKeys: finalKeys, rows: rows };
   }
 
   // ---- drawing ----
 
   var tooltipEl;
   function ensureTooltip() {
-    if (!tooltipEl) {
-      tooltipEl = document.createElement('div');
-      tooltipEl.className = 'chart-tooltip';
-      tooltipEl.hidden = true;
-    }
+    if (!tooltipEl) { tooltipEl = document.createElement('div'); tooltipEl.className = 'chart-tooltip'; tooltipEl.hidden = true; }
     return tooltipEl;
   }
   function showTooltip(container, html, px, py) {
     var tip = ensureTooltip();
-    tip.innerHTML = html;
-    tip.hidden = false;
-    tip.style.opacity = '1';
+    tip.innerHTML = html; tip.hidden = false; tip.style.opacity = '1';
     if (tip.parentElement !== container) {
       if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
       container.appendChild(tip);
@@ -462,125 +430,125 @@
     var height = Math.max(60, rows.length * rowH + 20);
     var svg = ensureSvg(el, width, height, opts.label);
     if (!rows.length) { emptyState(svg, width, height); return; }
-
     var labelW = Math.min(width * 0.42, 150);
     var valueW = 54;
     var left = labelW + 10;
     var right = width - valueW - 10;
     var max = d3.max(rows, function (d) { return d.count; }) || 1;
     var x = d3.scaleLinear().domain([0, max]).range([0, right - left]);
-
     var g = svg.append('g');
     var rowSel = g.selectAll('g.hbar-row').data(rows).join('g').attr('class', 'hbar-row')
       .attr('transform', function (d, i) { return 'translate(0,' + (i * rowH + 6) + ')'; });
-
     rowSel.append('text').attr('x', labelW).attr('y', rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'end')
       .style('fill', 'var(--fg)').style('font-size', '0.76rem').text(function (d) { return d.category; });
-
     var bars = rowSel.append('rect')
       .attr('x', left).attr('y', 2).attr('height', rowH - 8)
       .attr('width', function (d) { return Math.max(1, x(d.count)); })
-      .style('fill', function (d) { return opts.highlight && d.category === opts.highlight ? COLORS[1] : COLORS[0]; })
-      .attr('rx', 3);
-
+      .style('fill', COLORS[0]).attr('rx', 3);
     rowSel.append('text').attr('x', function (d) { return left + x(d.count) + 6; }).attr('y', rowH / 2).attr('dy', '0.32em')
       .style('fill', 'var(--fg-muted)').style('font-size', '0.76rem')
-      .text(function (d) { return fmt0(d.count) + (opts.showPct ? ' (' + d.pct.toFixed(0) + '%)' : ''); });
-
-    if (opts.onClick) bars.style('cursor', 'pointer').on('click', function (event, d) { opts.onClick(d); });
+      .text(function (d) { return fmt0(d.count) + ' (' + d.pct.toFixed(0) + '%)'; });
     bars.on('mousemove', function (event, d) {
       showTooltip(el, '<b>' + d.category + '</b><br>' + fmt0(d.count) + ' homes (' + d.pct.toFixed(1) + '%)', event.clientX, event.clientY);
     }).on('mouseleave', hideTooltip);
   }
 
-  function drawVBars(el, rows, opts) {
-    opts = opts || {};
-    var width = Math.max(el.clientWidth || 320, 260);
-    var height = 220;
-    var margin = { top: 24, right: 12, bottom: 32, left: 40 };
-    var svg = ensureSvg(el, width, height, opts.label);
-    if (!rows.length) { emptyState(svg, width, height); return; }
-
-    var x = d3.scaleBand().domain(rows.map(function (d) { return d.category; })).range([margin.left, width - margin.right]).padding(0.25);
-    var max = d3.max(rows, function (d) { return d.count; }) || 1;
-    var y = d3.scaleLinear().domain([0, max * 1.18]).nice().range([height - margin.bottom, margin.top]);
-
-    var g = svg.append('g');
-    g.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')')
-      .call(d3.axisBottom(x).tickSize(0))
-      .call(function (gg) {
-        gg.select('.domain').remove();
-        gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem')
-          .text(function (d) { return opts.labelFn ? opts.labelFn(d) : d; });
-      });
-
-    var bars = g.selectAll('rect').data(rows).join('rect')
-      .attr('x', function (d) { return x(d.category); }).attr('width', x.bandwidth())
-      .attr('y', function (d) { return y(d.count); }).attr('height', function (d) { return (height - margin.bottom) - y(d.count); })
-      .attr('rx', 3).style('fill', COLORS[0]);
-
-    g.selectAll('text.value-label').data(rows).join('text').attr('class', 'value-label')
-      .attr('x', function (d) { return x(d.category) + x.bandwidth() / 2; }).attr('y', function (d) { return y(d.count) - 6; })
-      .attr('text-anchor', 'middle').style('fill', 'var(--fg-muted)').style('font-size', '0.74rem')
-      .text(function (d) { return fmt0(d.count); });
-
-    bars.on('mousemove', function (event, d) {
-      var label = opts.labelFn ? opts.labelFn(d.category) : d.category;
-      showTooltip(el, '<b>' + label + '</b><br>' + fmt0(d.count) + ' homes (' + d.pct.toFixed(1) + '%)', event.clientX, event.clientY);
-    }).on('mouseleave', hideTooltip);
-  }
-
-  function drawLines(el, rows, series, opts) {
+  function drawAvgByYearBars(el, yearRows, opts) {
     opts = opts || {};
     var width = Math.max(el.clientWidth || 320, 260);
     var height = 240;
-    var margin = { top: 20, right: 16, bottom: 28, left: 46 };
+    var margin = { top: 20, right: 12, bottom: 28, left: 46 };
     var svg = ensureSvg(el, width, height, opts.label);
-    var withData = rows.filter(function (r) { return series.some(function (s) { return r[s.key] != null; }); });
-    if (!withData.length) { emptyState(svg, width, height); return; }
-
-    var x = d3.scalePoint().domain(rows.map(function (d) { return d.year; })).range([margin.left, width - margin.right]).padding(0.5);
-    var allVals = [];
-    series.forEach(function (s) { rows.forEach(function (r) { if (r[s.key] != null) allVals.push(r[s.key]); }); });
-    var maxVal = d3.max(allVals) || 1;
-    var y = d3.scaleLinear().domain([0, maxVal * 1.15]).nice().range([height - margin.bottom, margin.top]);
-
+    var rows = yearRows.filter(function (d) { return d[opts.key] != null; });
+    if (!rows.length) { emptyState(svg, width, height); return; }
+    var x = d3.scaleBand().domain(yearRows.map(function (d) { return String(d.year); })).range([margin.left, width - margin.right]).padding(0.25);
+    var max = d3.max(rows, function (d) { return d[opts.key]; }) || 1;
+    var y = d3.scaleLinear().domain([0, max * 1.18]).nice().range([height - margin.bottom, margin.top]);
     var g = svg.append('g');
     g.append('g').selectAll('line').data(y.ticks(4)).join('line')
       .attr('x1', margin.left).attr('x2', width - margin.right)
       .attr('y1', function (d) { return y(d); }).attr('y2', function (d) { return y(d); }).style('stroke', 'var(--grid)');
-
     g.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')')
-      .call(d3.axisBottom(x).tickSize(0).tickValues(x.domain().filter(function (d, i, arr) { return arr.length <= 8 || i % Math.ceil(arr.length / 8) === 0; })))
+      .call(d3.axisBottom(x).tickSize(0))
       .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
-
     g.append('g').attr('transform', 'translate(' + margin.left + ',0)')
-      .call(d3.axisLeft(y).ticks(4).tickFormat(function (d) { return fmt0(d); }))
+      .call(d3.axisLeft(y).ticks(4).tickFormat(function (d) { return opts.valueFmt(d); }))
       .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('line').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
 
-    series.forEach(function (s, si) {
-      var color = s.color || COLORS[si % COLORS.length];
-      var line = d3.line().defined(function (d) { return d[s.key] != null; }).x(function (d) { return x(d.year); }).y(function (d) { return y(d[s.key]); });
-      g.append('path').datum(rows).attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2).attr('d', line);
-      var pts = rows.filter(function (d) { return d[s.key] != null; });
-      g.selectAll('circle.pt-' + si).data(pts).join('circle').attr('class', 'pt-' + si)
-        .attr('cx', function (d) { return x(d.year); }).attr('cy', function (d) { return y(d[s.key]); }).attr('r', 3.5).style('fill', color)
-        .on('mousemove', function (event, d) {
-          showTooltip(el, '<b>' + s.name + ', ' + d.year + '</b><br>' + fmt1(d[s.key]) + (s.unit ? ' ' + s.unit : ''), event.clientX, event.clientY);
+    var bars = g.selectAll('rect').data(rows).join('rect')
+      .attr('x', function (d) { return x(String(d.year)); }).attr('width', x.bandwidth())
+      .attr('y', function (d) { return y(d[opts.key]); }).attr('height', function (d) { return (height - margin.bottom) - y(d[opts.key]); })
+      .attr('rx', 3).style('fill', COLORS[0]);
+    g.selectAll('text.value-label').data(rows).join('text').attr('class', 'value-label')
+      .attr('x', function (d) { return x(String(d.year)) + x.bandwidth() / 2; }).attr('y', function (d) { return y(d[opts.key]) - 6; })
+      .attr('text-anchor', 'middle').style('fill', 'var(--fg-muted)').style('font-size', '0.72rem')
+      .text(function (d) { return opts.valueFmt(d[opts.key]); });
+    bars.on('mousemove', function (event, d) {
+      showTooltip(el, '<b>' + d.year + '</b><br>' + opts.valueFmt(d[opts.key]) + (opts.unit ? ' ' + opts.unit : '') + ' avg · ' + fmt0(d.count) + ' homes', event.clientX, event.clientY);
+    }).on('mouseleave', hideTooltip);
+  }
+
+  function drawStackedBars100(el, breakdown, opts) {
+    opts = opts || {};
+    var labelFn = opts.labelFn || asIs;
+    var width = Math.max(el.clientWidth || 320, 280);
+    var height = 270;
+    var margin = { top: 38, right: 12, bottom: 28, left: 40 };
+    var svg = ensureSvg(el, width, height, opts.label);
+    if (!breakdown.years.length) { emptyState(svg, width, height); return; }
+
+    var x = d3.scaleBand().domain(breakdown.years.map(String)).range([margin.left, width - margin.right]).padding(0.22);
+    var y = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
+    var catKeys = breakdown.catKeys;
+    var color = d3.scaleOrdinal().domain(catKeys).range(catKeys.map(function (_, i) { return COLORS[i % COLORS.length]; }));
+
+    var g = svg.append('g');
+    g.append('g').selectAll('line').data([0, 25, 50, 75, 100]).join('line')
+      .attr('x1', margin.left).attr('x2', width - margin.right)
+      .attr('y1', function (d) { return y(d); }).attr('y2', function (d) { return y(d); }).style('stroke', 'var(--grid)');
+    g.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')')
+      .call(d3.axisBottom(x).tickSize(0))
+      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
+    g.append('g').attr('transform', 'translate(' + margin.left + ',0)')
+      .call(d3.axisLeft(y).tickValues([0, 50, 100]).tickFormat(function (d) { return d + '%'; }))
+      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('line').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
+
+    var yearGroups = g.selectAll('g.year-col').data(breakdown.rows).join('g').attr('class', 'year-col')
+      .attr('transform', function (d) { return 'translate(' + x(String(d.year)) + ',0)'; });
+
+    yearGroups.each(function (yearData) {
+      var gy = d3.select(this);
+      var cum = 0;
+      yearData.segs.forEach(function (seg) {
+        var y0 = cum, y1 = cum + seg.pct;
+        cum = y1;
+        if (!seg.count) return;
+        var rect = gy.append('rect')
+          .attr('x', 0).attr('width', x.bandwidth())
+          .attr('y', y(y1)).attr('height', Math.max(0, y(y0) - y(y1)))
+          .style('fill', color(seg.category));
+        rect.on('mousemove', function (event) {
+          showTooltip(el, '<b>' + labelFn(seg.category) + ', ' + yearData.year + '</b><br>' + seg.pct.toFixed(1) + '% (' + fmt0(seg.count) + ' homes)', event.clientX, event.clientY);
         }).on('mouseleave', hideTooltip);
+        if ((y(y0) - y(y1)) > 15) {
+          gy.append('text').attr('x', x.bandwidth() / 2).attr('y', (y(y0) + y(y1)) / 2).attr('dy', '0.32em')
+            .attr('text-anchor', 'middle').style('font-size', '0.66rem').style('fill', '#fff').style('pointer-events', 'none')
+            .text(Math.round(seg.pct) + '%');
+        }
+      });
     });
 
-    if (series.length > 1) {
-      var legend = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + (margin.top - 10) + ')');
-      var lx = 0;
-      series.forEach(function (s, si) {
-        var color = s.color || COLORS[si % COLORS.length];
-        var grp = legend.append('g').attr('transform', 'translate(' + lx + ',0)');
-        grp.append('rect').attr('width', 9).attr('height', 9).attr('y', -8).style('fill', color).attr('rx', 2);
-        var label = grp.append('text').attr('x', 13).style('fill', 'var(--axis)').style('font-size', '0.74rem').text(s.name);
-        lx += 13 + (label.node().getComputedTextLength ? label.node().getComputedTextLength() : 60) + 16;
-      });
-    }
+    var legend = svg.append('g').attr('transform', 'translate(' + margin.left + ',14)');
+    var lx = 0, ly = 0;
+    catKeys.forEach(function (k) {
+      var label = labelFn(k);
+      var grp = legend.append('g').attr('transform', 'translate(' + lx + ',' + ly + ')');
+      grp.append('rect').attr('width', 9).attr('height', 9).attr('y', -8).style('fill', color(k)).attr('rx', 2);
+      var t = grp.append('text').attr('x', 13).style('fill', 'var(--axis)').style('font-size', '0.72rem').text(label);
+      var tw = (t.node().getComputedTextLength ? t.node().getComputedTextLength() : 50) + 13 + 16;
+      lx += tw;
+      if (lx > width - margin.left - margin.right - 10) { lx = 0; ly += 16; }
+    });
   }
 
   // ---- rendering ----
@@ -589,14 +557,10 @@
 
   function renderKpis() {
     var s = computeSummary();
-    setText('kpiCount', fmt0(s.count));
-    setText('kpiMeuiOv', fmt1(s.avgMEUI)); setText('kpiMeui', fmt1(s.avgMEUI));
-    setText('kpiTediOv', fmt1(s.avgTEDI)); setText('kpiTedi', fmt1(s.avgTEDI));
-    setText('kpiAchOv', fmt2(s.avgACH)); setText('kpiAch', fmt2(s.avgACH));
-    setText('kpiGhgOv', fmt0(s.avgGHG)); setText('kpiGhg', fmt0(s.avgGHG));
-    setText('kpiCeilRsi', fmt2(s.avgCeilRSI));
-    setText('kpiWallRsi', fmt2(s.avgWallRSI));
-    setText('kpiFndWallRsi', fmt2(s.avgFndWallRSI));
+    setText('kpiMeui', fmt1(s.avgMEUI));
+    setText('kpiTedi', fmt1(s.avgTEDI));
+    setText('kpiAch', fmt2(s.avgACH));
+    setText('kpiGhg', fmt0(s.avgGHG));
     setText('pctHeatPump', fmtPct(s.pctHeatPump));
     setText('pctCooled', fmtPct(s.pctCooled));
     var hpFill = document.getElementById('heatPumpFill'); if (hpFill) hpFill.style.width = (s.pctHeatPump || 0) + '%';
@@ -607,47 +571,33 @@
   }
 
   function renderTab(tab) {
-    var el;
-    if (tab === 'overview') {
-      el = document.getElementById('chartEvalsByYear');
-      if (el) drawVBars(el, computeYearTrend().map(function (d) { return { category: String(d.year), count: d.count, pct: 0 }; }), { label: 'Evaluations by year built' });
-      el = document.getElementById('chartTopRegions');
-      if (el) drawHBars(el, computeRegionBreakdown(), {
-        label: 'Top regional districts', highlight: state.region,
-        onClick: function (d) { setState({ region: state.region === d.category ? '' : d.category, city: '' }); }
-      });
-      el = document.getElementById('chartTopCities');
-      if (el) drawHBars(el, computeTopCities(), {
-        label: 'Top municipalities', showPct: true, highlight: state.city,
-        onClick: function (d) { setState({ city: state.city === d.category ? '' : d.category }); }
-      });
-      el = document.getElementById('chartStepBreakdown');
-      if (el) drawVBars(el, breakdownRows(RAW, state, 'step_achieved', { order: 'numeric' }), { label: 'Step Code achieved', labelFn: stepLabel });
+    var el, trend;
+    if (tab === 'airtightness') {
+      trend = computeYearTrend();
+      el = document.getElementById('chartAchAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ach', label: 'Avg ACH50', valueFmt: fmt2, unit: 'ACH50' });
+      el = document.getElementById('chartAchStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('ach_step', { order: 'numeric' }), { label: 'Airtightness step', labelFn: stepLabel });
     } else if (tab === 'meui') {
-      el = document.getElementById('chartMeuiTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'meui', name: 'MEUI', unit: 'kWh/m²/yr' }], { label: 'MEUI trend' });
-      el = document.getElementById('chartMeuiStep'); if (el) drawVBars(el, breakdownRows(RAW, state, 'meui_step', { order: 'numeric' }), { label: 'MEUI step', labelFn: stepLabel });
+      trend = computeYearTrend();
+      el = document.getElementById('chartMeuiAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'meui', label: 'Avg MEUI', valueFmt: fmt1, unit: 'kWh/m²/yr' });
+      el = document.getElementById('chartMeuiStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('meui_step', { order: 'numeric' }), { label: 'MEUI step', labelFn: stepLabel });
     } else if (tab === 'tedi') {
-      el = document.getElementById('chartTediTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'tedi', name: 'TEDI', unit: 'kWh/m²/yr' }], { label: 'TEDI trend' });
-      el = document.getElementById('chartTediStep'); if (el) drawVBars(el, breakdownRows(RAW, state, 'tedi_step', { order: 'numeric' }), { label: 'TEDI step', labelFn: stepLabel });
-    } else if (tab === 'airtightness') {
-      el = document.getElementById('chartAchTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'ach', name: 'ACH50', unit: 'ACH' }], { label: 'Airtightness trend' });
-      el = document.getElementById('chartAchStep'); if (el) drawVBars(el, breakdownRows(RAW, state, 'ach_step', { order: 'numeric' }), { label: 'ACH step', labelFn: stepLabel });
-    } else if (tab === 'ghg') {
-      el = document.getElementById('chartGhgTrend'); if (el) drawLines(el, computeYearTrend(), [{ key: 'ghg', name: 'GHGs', unit: 'kg CO2e/yr' }], { label: 'GHG trend' });
-      el = document.getElementById('chartElBreakdown'); if (el) drawVBars(el, breakdownRows(RAW, state, 'el_achieved', { order: 'numeric' }), { label: 'EL achieved', labelFn: stepLabel });
+      trend = computeYearTrend();
+      el = document.getElementById('chartTediAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'tedi', label: 'Avg TEDI', valueFmt: fmt1, unit: 'kWh/m²/yr' });
+      el = document.getElementById('chartTediStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('tedi_step', { order: 'numeric' }), { label: 'TEDI step', labelFn: stepLabel });
+    } else if (tab === 'emissions') {
+      trend = computeYearTrend();
+      el = document.getElementById('chartGhgAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg', label: 'Avg GHGs', valueFmt: fmt0, unit: 'kg CO2e/yr' });
+      el = document.getElementById('chartElStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('el_achieved', { order: 'numeric' }), { label: 'EL achieved', labelFn: elLabel });
+      el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
     } else if (tab === 'heating') {
-      el = document.getElementById('chartHeatingSystem'); if (el) drawHBars(el, breakdownRows(RAW, state, 'heating_system'), { label: 'Heating system', showPct: true });
-      el = document.getElementById('chartHeatingFuel'); if (el) drawHBars(el, breakdownRows(RAW, state, 'heating_fuel'), { label: 'Heating fuel', showPct: true });
-    } else if (tab === 'cooling') {
-      el = document.getElementById('chartCoolingType'); if (el) drawHBars(el, breakdownRows(RAW, state, 'cooling_type'), { label: 'Cooling type', showPct: true });
+      el = document.getElementById('chartHeatPumpByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heat_pump'), { label: 'Heat pump adoption' });
+      el = document.getElementById('chartCoolingByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('cooling'), { label: 'Cooling adoption' });
+      el = document.getElementById('chartHeatingSystem'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_system'), { label: 'Heating system' });
+      el = document.getElementById('chartHeatingFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_fuel'), { label: 'Heating fuel' });
+      el = document.getElementById('chartCoolingType'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('cooling_type'), { label: 'Cooling type' });
     } else if (tab === 'dhw') {
-      el = document.getElementById('chartDhwType'); if (el) drawHBars(el, breakdownRows(RAW, state, 'dhw_type'), { label: 'DHW type', showPct: true });
-      el = document.getElementById('chartDhwFuel'); if (el) drawHBars(el, breakdownRows(RAW, state, 'dhw_fuel'), { label: 'DHW fuel', showPct: true });
-    } else if (tab === 'envelope') {
-      el = document.getElementById('chartEnvelopeTrend');
-      if (el) drawLines(el, computeYearTrend(), [
-        { key: 'ceil_rsi', name: 'Ceiling', unit: 'RSI' }, { key: 'wall_rsi', name: 'Main wall', unit: 'RSI' }, { key: 'fndwall_rsi', name: 'Fnd. wall', unit: 'RSI' }
-      ], { label: 'Envelope trend' });
+      el = document.getElementById('chartDhwType'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_type'), { label: 'DHW type' });
+      el = document.getElementById('chartDhwFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_fuel'), { label: 'DHW fuel' });
     }
   }
 
@@ -662,7 +612,7 @@
 
     var cityTotals = {};
     RAW.forEach(function (c) { if (!state.region || c.region === state.region) cityTotals[c.city] = (cityTotals[c.city] || 0) + c.count; });
-    var cities = Object.keys(cityTotals).sort(function (a, b) { return cityTotals[b] - cityTotals[a]; });
+    var cities = Object.keys(cityTotals).sort(function (a, b) { return a.localeCompare(b); });
     var citySel = document.getElementById('cityFilter');
     citySel.replaceChildren(new Option(state.region ? 'All in this regional district' : 'All municipalities', ''));
     cities.forEach(function (c) { citySel.appendChild(new Option(c + ' (' + fmt0(cityTotals[c]) + ')', c)); });
@@ -712,7 +662,6 @@
   // ---- boot ----
 
   fetch('data.json').then(function (r) { return r.json(); }).then(function (json) {
-    META = json;
     RAW = json.cells || [];
     var years = (json.years || []).filter(function (y) { return typeof y === 'number'; });
     if (years.length) { MIN_YEAR = Math.min.apply(null, years); MAX_YEAR = Math.max.apply(null, years); }
