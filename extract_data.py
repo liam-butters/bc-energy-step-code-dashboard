@@ -170,6 +170,11 @@ def main():
     region_counts = defaultdict(int)
     year_counts = defaultdict(int)
     excluded_unmapped = defaultdict(int)
+    # key -> lowercased value -> {original casing: count}, so values that only
+    # differ by case (e.g. "Natural gas" vs "Natural Gas") can be merged into
+    # whichever casing is most common, without mangling mixed-case values
+    # like "Furnace w/o AC".
+    case_variants = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     total_rows = 0
 
     print('Streaming data rows (this can take a minute or two) ...')
@@ -224,11 +229,33 @@ def main():
                 cv = cv.strip() if isinstance(cv, str) else cv
                 if cv:
                     cell['cat'][key][cv] += 1
+                    if isinstance(cv, str):
+                        case_variants[key][cv.lower()][cv] += 1
 
             if total_rows % 20000 == 0:
                 print(f'  ... {total_rows} rows')
 
     print(f'Done: {total_rows} rows, {len(cube)} (city, year) cells')
+
+    # Merge category values that only differ by case, keeping the most
+    # common casing for each.
+    canonical = {
+        key: {lower: max(variants.items(), key=lambda kv: kv[1])[0] for lower, variants in by_lower.items()}
+        for key, by_lower in case_variants.items()
+    }
+    merged_count = 0
+    for cell in cube.values():
+        for key, hist in cell['cat'].items():
+            fixed = defaultdict(int)
+            for cv, n in hist.items():
+                canon = canonical.get(key, {}).get(cv.lower(), cv) if isinstance(cv, str) else cv
+                if canon != cv:
+                    merged_count += 1
+                fixed[canon] += n
+            cell['cat'][key] = fixed
+    if merged_count:
+        print(f'Merged {merged_count} case-variant category values (e.g. "Natural gas" / "Natural Gas") '
+              f'into their most common casing')
 
     cells_out = []
     for (city, year_key), cell in cube.items():
