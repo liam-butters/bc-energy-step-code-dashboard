@@ -64,7 +64,12 @@ CATEGORY_FIELDS = {
     'Step Achieved': 'step_achieved',
     'MEUI Step Achieved': 'meui_step',
     'TEDI Step Achieved': 'tedi_step',
-    'ACH Step Achieved': 'ach_step',
+    # The workbook now computes airtightness compliance via three possible
+    # paths (ACH50, NLR, NLA) and combines them into this single column
+    # (whichever path gives the highest step, or "FAIL" if none pass) -
+    # that's the real per-home airtightness step, not the ACH50-only
+    # "ACH Step Achieved" column.
+    'Airtightness Step': 'ach_step',
     'EL Achieved': 'el_achieved',
     'Has heat pump?': 'heat_pump',
     'has cooling?': 'cooling',
@@ -324,13 +329,26 @@ def normalize_step_achieved(raw):
     return raw.strip() if isinstance(raw, str) else str(raw)
 
 
+# "Airtightness Step" stores "FAIL" (text) rather than 0 for homes that
+# don't meet any step's threshold - normalize it to '0' so it groups with
+# the other step fields' existing 0-as-Fail convention (see stepLabel() in
+# the dashboard).
+CATEGORY_FIELD_NORMALIZERS = {
+    'Airtightness Step': lambda v: '0' if isinstance(v, str) and v.strip().upper() == 'FAIL' else v,
+}
+
+
 # For the "limiting parameter" breakdown: whichever of airtightness/MEUI/TEDI
 # step-achieved is lowest is the one holding the home back from a higher
 # overall step. Ties (two or more fields sharing the lowest value) are
 # grouped into a single "Multiple limiting parameters" bucket rather than a
 # combinatorial label per tie, which was too messy to read as a chart.
+# Uses the combined "Airtightness Step" column (not the ACH50-only "ACH Step
+# Achieved") so this matches the workbook's own overall "Step Achieved"
+# formula, which is List.Min({Airtightness Step, TEDI Step Achieved,
+# Overall MEUI Achieved}).
 LIMITING_FIELDS = [
-    ('ACH Step Achieved', 'Airtightness'),
+    ('Airtightness Step', 'Airtightness'),
     ('MEUI Step Achieved', 'MEUI'),
     ('TEDI Step Achieved', 'TEDI'),
 ]
@@ -454,6 +472,8 @@ def main():
         for field, key in CATEGORY_FIELDS.items():
             cv = rowvals.get(field)
             cv = cv.strip() if isinstance(cv, str) else cv
+            if field in CATEGORY_FIELD_NORMALIZERS:
+                cv = CATEGORY_FIELD_NORMALIZERS[field](cv)
             if cv:
                 cell['cat'][key][cv] += 1
                 if isinstance(cv, str):

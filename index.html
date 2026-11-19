@@ -399,6 +399,18 @@
     { value: 1.5, label: 'Step 4' },
     { value: 1.0, label: 'Step 5' }
   ];
+  // NLA/NLR step targets, sourced from the workbook's own "NLA Step
+  // Achieved" / "NLR Step Achieved" formulas (see method.html).
+  var NLA_STEP_THRESHOLDS = [
+    { value: 1.2, label: 'Step 3' },
+    { value: 0.72, label: 'Step 4' },
+    { value: 0.48, label: 'Step 5' }
+  ];
+  var NLR_STEP_THRESHOLDS = [
+    { value: 0.89, label: 'Step 3' },
+    { value: 0.53, label: 'Step 4' },
+    { value: 0.35, label: 'Step 5' }
+  ];
   var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f', '#4a9bb0', '#a65d6b'];
   var SQM_TO_SQFT = 10.7639;
 
@@ -835,8 +847,8 @@
       trend = computeYearTrend();
       el = document.getElementById('chartAchAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ach', label: 'Avg ACH50', valueFmt: fmt2, unit: 'ACH50', thresholds: ACH_STEP_THRESHOLDS });
       el = document.getElementById('chartAchStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('ach_step', { order: 'numeric' }), { label: 'Airtightness step', labelFn: stepLabel });
-      el = document.getElementById('chartNlaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nla', label: 'Avg NLA', valueFmt: fmt2, unit: 'NLA' });
-      el = document.getElementById('chartNlrAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nlr', label: 'Avg NLR', valueFmt: fmt2, unit: 'NLR' });
+      el = document.getElementById('chartNlaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nla', label: 'Avg NLA', valueFmt: fmt2, unit: 'NLA', thresholds: NLA_STEP_THRESHOLDS });
+      el = document.getElementById('chartNlrAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nlr', label: 'Avg NLR', valueFmt: fmt2, unit: 'NLR', thresholds: NLR_STEP_THRESHOLDS });
     } else if (tab === 'meui') {
       trend = computeYearTrend();
       el = document.getElementById('chartMeuiAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'meui', label: 'Avg MEUI', valueFmt: fmt1, unit: 'kWh/m²/yr' });

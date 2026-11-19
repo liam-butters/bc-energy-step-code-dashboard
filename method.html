@@ -90,7 +90,7 @@
     <tr><th>Chart</th><th>Column(s)</th></tr>
     <tr><td>Entries by year</td><td>Row count only (no data column)</td></tr>
     <tr><td>Overall Step Code achieved, by year</td><td><code>Step Achieved</code></td></tr>
-    <tr><td>Limiting parameter, by year</td><td>Derived: whichever of <code>ACH Step Achieved</code>, <code>MEUI Step Achieved</code>, <code>TEDI Step Achieved</code> is lowest; 2+ tied is grouped as "Multiple limiting parameters"</td></tr>
+    <tr><td>Limiting parameter, by year</td><td>Derived: whichever of <code>Airtightness Step</code>, <code>MEUI Step Achieved</code>, <code>TEDI Step Achieved</code> is lowest; 2+ tied is grouped as "Multiple limiting parameters" (matches the workbook's own <code>Step Achieved</code> formula, which combines the same three columns)</td></tr>
     <tr><td>Avg. heated floor area, by year (ft&sup2;)</td><td><code>HEATEDFLOORAREA</code> (stored in m&sup2;, &times;10.7639 for display)</td></tr>
     <tr><td>Avg. design heat loss, by year</td><td><code>EGHDESHTLOSS</code></td></tr>
     <tr><td>Avg. design cooling load (heat gain), by year</td><td><code>ERSDesCoolLoss</code> (0 treated as missing - see Airtightness tab note on <code>Calc'd NLR</code> for why)</td></tr>
@@ -101,12 +101,13 @@
   <table>
     <tr><th>Chart</th><th>Column(s)</th></tr>
     <tr><td>Avg. airtightness KPI</td><td><code>Rounded ACH</code></td></tr>
-    <tr><td>Airtightness step achieved, by year</td><td><code>ACH Step Achieved</code></td></tr>
+    <tr><td>Airtightness step achieved, by year</td><td><code>Airtightness Step</code> - the workbook's combined airtightness compliance column (whichever of the ACH50, NLR, or NLA path gives the highest step; "FAIL" if none pass, shown as Fail)</td></tr>
     <tr><td>Avg. ACH50 by year</td><td><code>Rounded ACH</code>, plus dashed Step Code threshold lines (below)</td></tr>
-    <tr><td>Avg. NLA by year</td><td><code>NLA</code></td></tr>
-    <tr><td>Avg. NLR by year</td><td><code>Calc'd NLR</code> - switched from the raw <code>NLR</code> column, which uses <code>0</code> as a "not computed" sentinel for ~74% of rows (same issue already fixed for TEDI/MEUI); <code>Calc'd NLR</code> is populated for 99.6% of rows with no sentinel-zero pattern</td></tr>
+    <tr><td>Avg. NLA by year</td><td><code>NLA</code>, plus dashed Step Code threshold lines (below)</td></tr>
+    <tr><td>Avg. NLR by year</td><td><code>Calc'd NLR</code> - switched from the raw <code>NLR</code> column, which uses <code>0</code> as a "not computed" sentinel for ~74% of rows (same issue already fixed for TEDI/MEUI); <code>Calc'd NLR</code> is populated for 99.6% of rows with no sentinel-zero pattern - plus dashed Step Code threshold lines (below)</td></tr>
   </table>
   <p class="note"><b>ACH50 threshold lines</b>: 2.5 (Step 3), 1.5 (Step 4), 1.0 (Step 5), per BC Energy Step Code Part 9 airtightness targets. Step 1 has no airtightness target; Step 2's figure couldn't be confirmed against the official BC Building Code table, so no line is drawn for it.</p>
+  <p class="note"><b>NLA threshold lines</b>: 1.2 (Step 3), 0.72 (Step 4), 0.48 (Step 5). <b>NLR threshold lines</b>: 0.89 (Step 3), 0.53 (Step 4), 0.35 (Step 5). Both sourced from the workbook's own <code>NLA Step Achieved</code> / <code>NLR Step Achieved</code> formulas (see Calculated columns, below).</p>
 
   <h2>MEUI tab</h2>
   <table>
@@ -165,11 +166,16 @@
   </table>
 
   <h3>Airtightness</h3>
+  <p class="note">The workbook recognizes three separate compliance paths for airtightness (ACH50, NLR, NLA) and a home only needs to clear one of them at a given step - so each path gets its own step column, and a fourth column combines them into the home's actual airtightness step.</p>
   <table>
     <tr><th>Column</th><th>Built from</th><th>How</th></tr>
     <tr><td><code>Calc'd NLR</code></td><td><code>AIR50P</code>, <code>HSEVOL</code>, <code>LEAKAR</code>, <code>NLA</code></td><td><code>(AIR50P &times; HSEVOL &divide; 3.6) &divide; (LEAKAR &divide; NLA)</code>, rounded</td></tr>
-    <tr><td><code>ACH Step Achieved</code></td><td><code>AIR50P</code> (raw ACH50), <code>Calc'd NLR</code>, <code>NLA</code>, <code>TYPEOFHOUSE</code>, <code>BUILDINGTYPE</code></td><td>Whichever of ACH50/NLR/NLA is best determines the step (&le;1/0.35/0.48&rarr;5, &le;1.5/0.53/0.72&rarr;4, &le;2.5/0.89/1.2 (or &le;3.0 for non-single-detached houses)&rarr;3, else Fail)</td></tr>
+    <tr><td><code>ACH Step Achieved</code></td><td><code>AIR50P</code> (raw ACH50), <code>TYPEOFHOUSE</code>, <code>BUILDINGTYPE</code></td><td>&le;1.0&rarr;5, &le;1.5&rarr;4, &le;2.5&rarr;3 (or &le;3.0 for non-single-detached houses), else no step (null)</td></tr>
+    <tr><td><code>NLR Step Achieved</code></td><td><code>Calc'd NLR</code></td><td>&le;0.35&rarr;5, &le;0.53&rarr;4, &le;0.89&rarr;3, else no step (null)</td></tr>
+    <tr><td><code>NLA Step Achieved</code></td><td><code>NLA</code></td><td>&le;0.48&rarr;5, &le;0.72&rarr;4, &le;1.2&rarr;3 (and not exactly 0, which the workbook treats as "not computed"), else no step (null)</td></tr>
+    <tr><td><code>Airtightness Step</code></td><td><code>ACH Step Achieved</code>, <code>NLR Step Achieved</code>, <code>NLA Step Achieved</code></td><td>The best (highest) of the three paths; "FAIL" (shown as Fail) only if all three are null</td></tr>
   </table>
+  <p class="note">The <b>Airtightness step achieved, by year</b> chart and the dashed threshold lines on the <b>Avg. ACH50</b>, <b>Avg. NLA</b>, and <b>Avg. NLR</b> charts all read directly from this table's thresholds.</p>
 
   <h3>TEDI</h3>
   <table>
@@ -195,7 +201,7 @@
   <h3>Overall step</h3>
   <table>
     <tr><th>Column</th><th>Built from</th><th>How</th></tr>
-    <tr><td><code>Step Achieved</code></td><td><code>ACH Step Achieved</code>, <code>TEDI Step Achieved</code>, <code>Overall MEUI Achieved</code></td><td>The lowest of the three (0/Fail if any one of them is 0) - this is the same "weakest link" logic the dashboard's own Limiting Parameter chart uses independently</td></tr>
+    <tr><td><code>Step Achieved</code></td><td><code>Airtightness Step</code>, <code>TEDI Step Achieved</code>, <code>Overall MEUI Achieved</code></td><td>The lowest of the three (0/Fail if any one of them is 0) - this is the same "weakest link" logic the dashboard's own Limiting Parameter chart uses independently</td></tr>
   </table>
   <p class="note"><code>Climate Zone</code> itself is also calculated, not raw: it's bucketed from <code>HDDs</code> (heating degree days), which the query joins in from a separate weather-station lookup keyed by location - it isn't one of the workbook's own HOT2000 export columns.</p>
 
