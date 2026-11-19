@@ -140,6 +140,7 @@
   .chart-card.wide { grid-column: 1 / -1; }
   .chart-card h3 { margin: 0 0 10px 0; font-size: 0.92rem; font-weight: 600; }
   .chart-card p.chart-note { margin: 8px 0 0 0; font-size: 0.76rem; color: var(--fg-muted); }
+  .chart-row-note { margin: -6px 0 14px 0; font-size: 0.76rem; color: var(--fg-muted); }
   .chart-box { position: relative; min-height: 230px; }
   .chart-box svg text { font-family: inherit; }
   .chart-empty { fill: var(--fg-muted); font-size: 0.78rem; }
@@ -237,16 +238,36 @@
   </div>
 
   <nav class="tabs" id="tabNav">
-    <button class="tab-btn active" data-tab="airtightness">Airtightness</button>
+    <button class="tab-btn active" data-tab="overall">Overall</button>
+    <button class="tab-btn" data-tab="airtightness">Airtightness</button>
     <button class="tab-btn" data-tab="meui">MEUI</button>
     <button class="tab-btn" data-tab="tedi">TEDI</button>
     <button class="tab-btn" data-tab="emissions">Emissions</button>
     <button class="tab-btn" data-tab="heating">Heating &amp; cooling</button>
     <button class="tab-btn" data-tab="dhw">Water heating</button>
-    <button class="tab-btn" data-tab="overall">Overall</button>
   </nav>
 
-  <section id="tab-airtightness" class="tab-panel" data-panel="airtightness">
+  <section id="tab-overall" class="tab-panel" data-panel="overall">
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Entries by year</h3><div class="chart-box" id="chartEntryCount"></div><p class="chart-note">Number of home energy evaluations matching the current filters, by year.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Overall Step Code achieved, by year</h3><div class="chart-box" id="chartOverallStep"></div><p class="chart-note">% of homes in that year at each overall BC Energy Step Code step.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Limiting parameter, by year</h3><div class="chart-box" id="chartLimitingParam"></div><p class="chart-note">Whichever of airtightness, MEUI or TEDI step achieved is lowest is what's holding the home back from a higher overall step; "Multiple limiting parameters" means two or more tied.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Avg. heated floor area, by year</h3><div class="chart-box" id="chartFloorAreaAvg"></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. design heat loss, by year</h3><div class="chart-box" id="chartDesignHeatLossAvg"></div></div>
+      <div class="chart-card"><h3>Avg. design cooling load (heat gain), by year</h3><div class="chart-box" id="chartDesignCoolLoadAvg"></div></div>
+    </div>
+    <p class="chart-row-note">Design heat loss and design cooling load (heat gain) values are calculated by HOT2000 and are not CSA F280-compliant.</p>
+  </section>
+
+  <section id="tab-airtightness" class="tab-panel" data-panel="airtightness" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. ACH50 by year</h3><div class="chart-box" id="chartAchAvg"></div></div>
@@ -285,11 +306,11 @@
   <section id="tab-heating" class="tab-panel" data-panel="heating" hidden>
     <div class="progress-pair">
       <div class="progress-row">
-        <div class="progress-top"><span class="kpi-label">Homes with a heat pump</span><span class="progress-value" id="pctHeatPump">—</span></div>
+        <div class="progress-top"><span class="kpi-label" id="heatPumpLabel">Homes with a heat pump</span><span class="progress-value" id="pctHeatPump">—</span></div>
         <div class="progress-track"><div class="progress-fill" id="heatPumpFill"></div></div>
       </div>
       <div class="progress-row">
-        <div class="progress-top"><span class="kpi-label">Homes with cooling</span><span class="progress-value" id="pctCooled">—</span></div>
+        <div class="progress-top"><span class="kpi-label" id="cooledLabel">Homes with cooling</span><span class="progress-value" id="pctCooled">—</span></div>
         <div class="progress-track"><div class="progress-fill" id="cooledFill"></div></div>
       </div>
     </div>
@@ -309,25 +330,6 @@
     </div>
   </section>
 
-  <section id="tab-overall" class="tab-panel" data-panel="overall" hidden>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Entries by year</h3><div class="chart-box" id="chartEntryCount"></div><p class="chart-note">Number of home energy evaluations matching the current filters, by year.</p></div>
-    </div>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Overall Step Code achieved, by year</h3><div class="chart-box" id="chartOverallStep"></div><p class="chart-note">% of homes in that year at each overall BC Energy Step Code step.</p></div>
-    </div>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Limiting parameter, by year</h3><div class="chart-box" id="chartLimitingParam"></div><p class="chart-note">Whichever of airtightness, MEUI or TEDI step achieved is lowest is what's holding the home back from a higher overall step; a combined label means two or more tied.</p></div>
-    </div>
-    <div class="chart-row">
-      <div class="chart-card"><h3>Avg. heated floor area, by year</h3><div class="chart-box" id="chartFloorAreaAvg"></div></div>
-      <div class="chart-card"><h3>Avg. design heat loss, by year</h3><div class="chart-box" id="chartDesignHeatLossAvg"></div></div>
-    </div>
-    <div class="chart-row">
-      <div class="chart-card"><h3>Avg. design cooling load, by year</h3><div class="chart-box" id="chartDesignCoolLoadAvg"></div></div>
-    </div>
-  </section>
-
   <footer>
     Built from BC Energy Step Code evaluation data (NRCan dataset), aggregated to municipality / year-built level — no individual addresses or identifying details.
     Source and refresh pipeline: <a href="https://github.com/liam-butters/bc-energy-step-code-dashboard">this repository</a>.
@@ -344,6 +346,7 @@
   var DEFAULT_YEAR_TO = 2026;
   var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi', 'nla', 'nlr', 'floor_area', 'design_heat_loss', 'design_cool_load'];
   var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f', '#4a9bb0', '#a65d6b'];
+  var SQM_TO_SQFT = 10.7639;
 
   var DATA = null;
   var RAW = [];
@@ -351,7 +354,7 @@
     cities: [], regions: [], houseTypes: [], murb: '', yearMode: 'built',
     yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO
   };
-  var currentTab = 'airtightness';
+  var currentTab = 'overall';
 
   function fmtNum(decimals) {
     return function (n) {
@@ -665,16 +668,35 @@
       });
     });
 
-    var legend = svg.append('g').attr('transform', 'translate(' + margin.left + ',14)');
-    var lx = 0, ly = 0;
-    catKeys.forEach(function (k) {
+    // Measure each legend item's width first (swatch + gap + text + trailing
+    // spacing), wrap into rows that fit the chart width, then center each
+    // row horizontally instead of left-justifying it.
+    var availW = width - margin.left - margin.right;
+    var items = catKeys.map(function (k) {
       var label = labelFn(k);
-      var grp = legend.append('g').attr('transform', 'translate(' + lx + ',' + ly + ')');
-      grp.append('rect').attr('width', 9).attr('height', 9).attr('y', -8).style('fill', color(k)).attr('rx', 2);
-      var t = grp.append('text').attr('x', 13).style('fill', 'var(--axis)').style('font-size', '0.72rem').text(label);
-      var tw = (t.node().getComputedTextLength ? t.node().getComputedTextLength() : 50) + 13 + 16;
-      lx += tw;
-      if (lx > width - margin.left - margin.right - 10) { lx = 0; ly += 16; }
+      var probe = svg.append('text').style('font-size', '0.72rem').style('visibility', 'hidden').text(label);
+      var tw = (probe.node().getComputedTextLength ? probe.node().getComputedTextLength() : label.length * 6) + 13 + 16;
+      probe.remove();
+      return { key: k, label: label, width: tw };
+    });
+    var legendRows = [];
+    var row = [], rowW = 0;
+    items.forEach(function (it) {
+      if (row.length && rowW + it.width > availW) { legendRows.push(row); row = []; rowW = 0; }
+      row.push(it); rowW += it.width;
+    });
+    if (row.length) legendRows.push(row);
+
+    var legend = svg.append('g').attr('transform', 'translate(0,14)');
+    legendRows.forEach(function (rowItems, ri) {
+      var rowWidth = rowItems.reduce(function (a, it) { return a + it.width; }, 0) - 16;
+      var lx = margin.left + Math.max(0, (availW - rowWidth) / 2);
+      rowItems.forEach(function (it) {
+        var grp = legend.append('g').attr('transform', 'translate(' + lx + ',' + (ri * 16) + ')');
+        grp.append('rect').attr('width', 9).attr('height', 9).attr('y', -8).style('fill', color(it.key)).attr('rx', 2);
+        grp.append('text').attr('x', 13).style('fill', 'var(--axis)').style('font-size', '0.72rem').text(it.label);
+        lx += it.width;
+      });
     });
   }
 
@@ -684,16 +706,18 @@
 
   function renderKpis() {
     var s = computeSummary();
+    var yearVerb = state.yearMode === 'entry' ? 'entered' : 'built';
     setText('kpiMeui', fmt1(s.avgMEUI));
     setText('kpiTedi', fmt1(s.avgTEDI));
     setText('kpiAch', fmt2(s.avgACH));
     setText('kpiGhg', fmt0(s.avgGHG));
     setText('pctHeatPump', fmtPct(s.pctHeatPump));
     setText('pctCooled', fmtPct(s.pctCooled));
+    setText('heatPumpLabel', 'Homes with a heat pump (' + yearVerb + ' since ' + state.yearFrom + ')');
+    setText('cooledLabel', 'Homes with cooling (' + yearVerb + ' since ' + state.yearFrom + ')');
     var hpFill = document.getElementById('heatPumpFill'); if (hpFill) hpFill.style.width = (s.pctHeatPump || 0) + '%';
     var clFill = document.getElementById('cooledFill'); if (clFill) clFill.style.width = (s.pctCooled || 0) + '%';
 
-    var yearVerb = state.yearMode === 'entry' ? 'entered' : 'built';
     setText('subtitle', fmt0(s.count) + ' homes evaluated in ' + describeSelection() + ', ' + yearVerb + ' ' + state.yearFrom + '–' + state.yearTo + '.');
   }
 
@@ -729,7 +753,7 @@
       el = document.getElementById('chartEntryCount'); if (el) drawAvgByYearBars(el, trend, { key: 'count', label: 'Entries', valueFmt: fmt0 });
       el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
       el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10 }), { label: 'Limiting parameter' });
-      el = document.getElementById('chartFloorAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'floor_area', label: 'Avg heated floor area', valueFmt: fmt0, unit: 'm²' });
+      el = document.getElementById('chartFloorAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'floor_area', label: 'Avg heated floor area', valueFmt: function (n) { return fmt0(n * SQM_TO_SQFT); }, unit: 'ft²' });
       el = document.getElementById('chartDesignHeatLossAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_heat_loss', label: 'Avg design heat loss', valueFmt: fmt0, unit: 'W' });
       el = document.getElementById('chartDesignCoolLoadAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_cool_load', label: 'Avg design cooling load', valueFmt: fmt0, unit: 'W' });
     }

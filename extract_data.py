@@ -29,10 +29,12 @@ DEFAULT_WORKBOOK = Path(__file__).parent.parent / 'NRCan Database Analysis.xlsx'
 OUT_PATH = Path(__file__).parent / 'data.json'
 
 NUMERIC_FIELDS = {
-    'MEUI': 'meui',
-    'Calculated MEUI': 'meui_calc',
-    'TEDI': 'tedi',
-    "Calc'd TEDI": 'tedi_calc',
+    # Use the calculated MEUI/TEDI columns, not the raw "MEUI"/"TEDI" ones:
+    # the raw columns use 0 as a "not computed" sentinel for ~66% of rows
+    # (physically implausible for a real home) while the calculated columns
+    # are consistently populated.
+    'Calculated MEUI': 'meui',
+    "Calc'd TEDI": 'tedi',
     'Rounded ACH': 'ach',
     'GHGs': 'ghg',
     'CEILINS': 'ceil_rsi',
@@ -46,10 +48,9 @@ NUMERIC_FIELDS = {
 }
 
 # These columns use 0 as a "not computed / not applicable" sentinel instead
-# of leaving the cell blank (e.g. ~66% of TEDI values are exactly 0, which is
-# physically implausible for a real home). Treat 0 as missing for these keys
-# so it doesn't drag averages toward zero.
-ZERO_AS_MISSING = {'tedi', 'nlr', 'design_cool_load'}
+# of leaving the cell blank. Treat 0 as missing for these keys so it doesn't
+# drag averages toward zero.
+ZERO_AS_MISSING = {'nlr', 'design_cool_load'}
 
 CATEGORY_FIELDS = {
     'Step Achieved': 'step_achieved',
@@ -279,13 +280,14 @@ def to_float(raw):
 # For the "limiting parameter" breakdown: whichever of airtightness/MEUI/TEDI
 # step-achieved is lowest is the one holding the home back from a higher
 # overall step. Ties (two or more fields sharing the lowest value) are
-# reported as a combined label, e.g. "MEUI + TEDI".
+# grouped into a single "Multiple limiting parameters" bucket rather than a
+# combinatorial label per tie, which was too messy to read as a chart.
 LIMITING_FIELDS = [
     ('ACH Step Achieved', 'Airtightness'),
     ('MEUI Step Achieved', 'MEUI'),
     ('TEDI Step Achieved', 'TEDI'),
 ]
-LIMITING_ORDER = {label: i for i, (_, label) in enumerate(LIMITING_FIELDS)}
+MULTIPLE_LIMITING_LABEL = 'Multiple limiting parameters'
 
 
 def limiting_param_label(rowvals):
@@ -296,8 +298,10 @@ def limiting_param_label(rowvals):
             return None
         vals.append((label, v))
     min_v = min(v for _, v in vals)
-    winners = sorted((label for label, v in vals if v == min_v), key=LIMITING_ORDER.get)
-    return ' + '.join(winners)
+    winners = [label for label, v in vals if v == min_v]
+    if len(winners) > 1:
+        return MULTIPLE_LIMITING_LABEL
+    return winners[0]
 
 
 def main():
