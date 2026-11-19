@@ -216,6 +216,30 @@ def to_float(raw):
         return None
 
 
+# For the "limiting parameter" breakdown: whichever of airtightness/MEUI/TEDI
+# step-achieved is lowest is the one holding the home back from a higher
+# overall step. Ties (two or more fields sharing the lowest value) are
+# reported as a combined label, e.g. "MEUI + TEDI".
+LIMITING_FIELDS = [
+    ('ACH Step Achieved', 'Airtightness'),
+    ('MEUI Step Achieved', 'MEUI'),
+    ('TEDI Step Achieved', 'TEDI'),
+]
+LIMITING_ORDER = {label: i for i, (_, label) in enumerate(LIMITING_FIELDS)}
+
+
+def limiting_param_label(rowvals):
+    vals = []
+    for field, label in LIMITING_FIELDS:
+        v = to_float(rowvals.get(field))
+        if v is None:
+            return None
+        vals.append((label, v))
+    min_v = min(v for _, v in vals)
+    winners = sorted((label for label, v in vals if v == min_v), key=LIMITING_ORDER.get)
+    return ' + '.join(winners)
+
+
 def main():
     wb_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_WORKBOOK
     print(f'Reading {wb_path.name} ...')
@@ -333,6 +357,10 @@ def main():
                     cell['cat'][key][cv] += 1
                     if isinstance(cv, str):
                         case_variants[key][cv.lower()][cv] += 1
+
+            limiting = limiting_param_label(rowvals)
+            if limiting:
+                cell['cat']['limiting_param'][limiting] += 1
 
             if total_rows % 20000 == 0:
                 print(f'  ... {total_rows} rows')

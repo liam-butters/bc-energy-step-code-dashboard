@@ -218,6 +218,7 @@
     <button class="tab-btn" data-tab="emissions">Emissions</button>
     <button class="tab-btn" data-tab="heating">Heating &amp; cooling</button>
     <button class="tab-btn" data-tab="dhw">Water heating</button>
+    <button class="tab-btn" data-tab="overall">Overall</button>
   </nav>
 
   <section id="tab-airtightness" class="tab-panel" data-panel="airtightness">
@@ -250,9 +251,6 @@
       <div class="chart-card"><h3>Avg. GHGs by year built</h3><div class="chart-box" id="chartGhgAvg"></div></div>
       <div class="chart-card"><h3>Energy Limit achieved, by year built</h3><div class="chart-box" id="chartElStep"></div><p class="chart-note">% of homes built that year at each Energy Limit (GHG) level.</p></div>
     </div>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Overall Step Code achieved, by year built</h3><div class="chart-box" id="chartOverallStep"></div><p class="chart-note">% of homes built that year at each overall BC Energy Step Code step.</p></div>
-    </div>
   </section>
 
   <section id="tab-heating" class="tab-panel" data-panel="heating" hidden>
@@ -274,15 +272,20 @@
       <div class="chart-card"><h3>Primary heating system, by year built</h3><div class="chart-box" id="chartHeatingSystem"></div></div>
       <div class="chart-card"><h3>Primary heating fuel, by year built</h3><div class="chart-box" id="chartHeatingFuel"></div></div>
     </div>
-    <div class="chart-row">
-      <div class="chart-card wide"><h3>Cooling equipment type, by year built</h3><div class="chart-box" id="chartCoolingType"></div></div>
-    </div>
   </section>
 
   <section id="tab-dhw" class="tab-panel" data-panel="dhw" hidden>
     <div class="chart-row">
-      <div class="chart-card"><h3>Water heating system type, by year built</h3><div class="chart-box" id="chartDhwType"></div></div>
       <div class="chart-card"><h3>Water heating fuel, by year built</h3><div class="chart-box" id="chartDhwFuel"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-overall" class="tab-panel" data-panel="overall" hidden>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Overall Step Code achieved, by year built</h3><div class="chart-box" id="chartOverallStep"></div><p class="chart-note">% of homes built that year at each overall BC Energy Step Code step.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Limiting parameter, by year built</h3><div class="chart-box" id="chartLimitingParam"></div><p class="chart-note">Whichever of airtightness, MEUI or TEDI step achieved is lowest is what's holding the home back from a higher overall step; a combined label means two or more tied.</p></div>
     </div>
   </section>
 
@@ -408,6 +411,7 @@
     opts = opts || {};
     var order = opts.order || 'count';
     var topN = opts.topN || 6;
+    var topStack = opts.topStack || [];
     var byYear = {};
     for (var i = 0; i < RAW.length; i++) {
       var cell = RAW[i];
@@ -433,7 +437,20 @@
     }
     var keyMap = {};
     var finalKeys;
-    if (order !== 'numeric' && catKeys.length > topN) {
+    var pinned = topStack.filter(function (k) { return catKeys.indexOf(k) !== -1; });
+    if (order !== 'numeric' && pinned.length) {
+      // Pinned categories are drawn last (topmost in the stack), in the given
+      // order, and are never grouped into "Other".
+      var rest = catKeys.filter(function (c) { return pinned.indexOf(c) === -1; });
+      var keepN = Math.max(0, topN - pinned.length);
+      var kept = rest.slice(0, keepN);
+      var overflow = rest.slice(keepN);
+      finalKeys = kept.concat(overflow.length ? ['Other'] : []).concat(pinned);
+      catKeys.forEach(function (c) {
+        if (pinned.indexOf(c) !== -1) keyMap[c] = c;
+        else keyMap[c] = kept.indexOf(c) !== -1 ? c : 'Other';
+      });
+    } else if (order !== 'numeric' && catKeys.length > topN) {
       finalKeys = catKeys.slice(0, topN).concat(['Other']);
       catKeys.forEach(function (c, i) { keyMap[c] = i < topN ? c : 'Other'; });
     } else {
@@ -651,16 +668,16 @@
       trend = computeYearTrend();
       el = document.getElementById('chartGhgAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg', label: 'Avg GHGs', valueFmt: fmt0, unit: 'kg CO2e/yr' });
       el = document.getElementById('chartElStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('el_achieved', { order: 'numeric' }), { label: 'EL achieved', labelFn: elLabel });
-      el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
     } else if (tab === 'heating') {
       el = document.getElementById('chartHeatPumpByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heat_pump'), { label: 'Heat pump adoption' });
       el = document.getElementById('chartCoolingByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('cooling'), { label: 'Cooling adoption' });
-      el = document.getElementById('chartHeatingSystem'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_system'), { label: 'Heating system' });
+      el = document.getElementById('chartHeatingSystem'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_system', { topStack: ['Dual Fuel', 'Heat Pump'] }), { label: 'Heating system' });
       el = document.getElementById('chartHeatingFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_fuel'), { label: 'Heating fuel' });
-      el = document.getElementById('chartCoolingType'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('cooling_type'), { label: 'Cooling type' });
     } else if (tab === 'dhw') {
-      el = document.getElementById('chartDhwType'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_type'), { label: 'DHW type' });
       el = document.getElementById('chartDhwFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_fuel'), { label: 'DHW fuel' });
+    } else if (tab === 'overall') {
+      el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
+      el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10 }), { label: 'Limiting parameter' });
     }
   }
 
