@@ -258,7 +258,7 @@
       <div class="chart-card wide"><h3>Limiting parameter, by year</h3><div class="chart-box" id="chartLimitingParam"></div><p class="chart-note">Whichever of airtightness, MEUI or TEDI step achieved is lowest is what's holding the home back from a higher overall step; "Multiple limiting parameters" means two or more tied.</p></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card wide"><h3>Avg. heated floor area, by year</h3><div class="chart-box" id="chartFloorAreaAvg"></div></div>
+      <div class="chart-card wide"><h3>Avg. heated floor area, by year (ft²)</h3><div class="chart-box" id="chartFloorAreaAvg"></div></div>
     </div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. design heat loss, by year</h3><div class="chart-box" id="chartDesignHeatLossAvg"></div></div>
@@ -270,8 +270,8 @@
   <section id="tab-airtightness" class="tab-panel" data-panel="airtightness" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. ACH50 by year</h3><div class="chart-box" id="chartAchAvg"></div></div>
       <div class="chart-card"><h3>Airtightness step achieved, by year</h3><div class="chart-box" id="chartAchStep"></div><p class="chart-note">% of homes in that year at each airtightness step.</p></div>
+      <div class="chart-card"><h3>Avg. ACH50 by year</h3><div class="chart-box" id="chartAchAvg"></div></div>
     </div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. NLA by year</h3><div class="chart-box" id="chartNlaAvg"></div><p class="chart-note">Normalized Leakage Area.</p></div>
@@ -680,12 +680,20 @@
       return { key: k, label: label, width: tw };
     });
     var legendRows = [];
-    var row = [], rowW = 0;
-    items.forEach(function (it) {
-      if (row.length && rowW + it.width > availW) { legendRows.push(row); row = []; rowW = 0; }
-      row.push(it); rowW += it.width;
-    });
-    if (row.length) legendRows.push(row);
+    if (opts.legendCols) {
+      // Fixed items-per-line, for charts with enough categories that
+      // width-based wrapping looks lopsided.
+      for (var li = 0; li < items.length; li += opts.legendCols) {
+        legendRows.push(items.slice(li, li + opts.legendCols));
+      }
+    } else {
+      var row = [], rowW = 0;
+      items.forEach(function (it) {
+        if (row.length && rowW + it.width > availW) { legendRows.push(row); row = []; rowW = 0; }
+        row.push(it); rowW += it.width;
+      });
+      if (row.length) legendRows.push(row);
+    }
 
     var legend = svg.append('g').attr('transform', 'translate(0,14)');
     legendRows.forEach(function (rowItems, ri) {
@@ -744,7 +752,7 @@
     } else if (tab === 'heating') {
       el = document.getElementById('chartHeatPumpByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heat_pump'), { label: 'Heat pump adoption' });
       el = document.getElementById('chartCoolingByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('cooling'), { label: 'Cooling adoption' });
-      el = document.getElementById('chartHeatingSystem'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_system', { topStack: ['Dual Fuel', 'Heat Pump'] }), { label: 'Heating system' });
+      el = document.getElementById('chartHeatingSystem'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_system', { topStack: ['Dual Fuel', 'Heat Pump'] }), { label: 'Heating system', legendCols: 3 });
       el = document.getElementById('chartHeatingFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heating_fuel'), { label: 'Heating fuel' });
     } else if (tab === 'dhw') {
       el = document.getElementById('chartDhwFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_fuel'), { label: 'DHW fuel' });
