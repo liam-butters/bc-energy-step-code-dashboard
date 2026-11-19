@@ -446,6 +446,7 @@ CITY_TO_REGION = {
     'Courtneay': COMOX_VALLEY,
     'Smitehsr': BULKLEY_NECHAKO,
     'Clucutz Lake': CARIBOO,
+    'Cluculz Lake': CARIBOO,
     'Quadra Island': STRATHCONA,
     'Kitimat': KITIMAT_STIKINE,
     'Hanceville': CARIBOO,
