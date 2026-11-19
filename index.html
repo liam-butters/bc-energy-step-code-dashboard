@@ -609,7 +609,9 @@
       .attr('text-anchor', 'middle').style('fill', 'var(--fg-muted)').style('font-size', '0.72rem')
       .text(function (d) { return opts.valueFmt(d[opts.key]); });
     bars.on('mousemove', function (event, d) {
-      showTooltip(el, '<b>' + d.year + '</b><br>' + opts.valueFmt(d[opts.key]) + (opts.unit ? ' ' + opts.unit : '') + ' avg · ' + fmt0(d.count) + ' homes', event.clientX, event.clientY);
+      var line = '<b>' + d.year + '</b><br>' + opts.valueFmt(d[opts.key]) + (opts.unit ? ' ' + opts.unit : '');
+      line += opts.key === 'count' ? ' homes' : (' avg · ' + fmt0(d.count) + ' homes');
+      showTooltip(el, line, event.clientX, event.clientY);
     }).on('mouseleave', hideTooltip);
   }
 
@@ -724,7 +726,7 @@
       el = document.getElementById('chartDhwFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_fuel'), { label: 'DHW fuel' });
     } else if (tab === 'overall') {
       trend = computeYearTrend();
-      el = document.getElementById('chartEntryCount'); if (el) drawAvgByYearBars(el, trend, { key: 'count', label: 'Entries', valueFmt: fmt0, unit: 'homes' });
+      el = document.getElementById('chartEntryCount'); if (el) drawAvgByYearBars(el, trend, { key: 'count', label: 'Entries', valueFmt: fmt0 });
       el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
       el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10 }), { label: 'Limiting parameter' });
       el = document.getElementById('chartFloorAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'floor_area', label: 'Avg heated floor area', valueFmt: fmt0, unit: 'm²' });

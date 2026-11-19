@@ -45,6 +45,12 @@ NUMERIC_FIELDS = {
     'ERSDesCoolLoss': 'design_cool_load',
 }
 
+# These columns use 0 as a "not computed / not applicable" sentinel instead
+# of leaving the cell blank (e.g. ~66% of TEDI values are exactly 0, which is
+# physically implausible for a real home). Treat 0 as missing for these keys
+# so it doesn't drag averages toward zero.
+ZERO_AS_MISSING = {'tedi', 'nlr', 'design_cool_load'}
+
 CATEGORY_FIELDS = {
     'Step Achieved': 'step_achieved',
     'MEUI Step Achieved': 'meui_step',
@@ -369,7 +375,7 @@ def main():
         cell['count'] += 1
         for field, key in NUMERIC_FIELDS.items():
             fv = to_float(rowvals.get(field))
-            if fv is not None:
+            if fv is not None and not (fv == 0 and key in ZERO_AS_MISSING):
                 acc = cell['num'][key]
                 acc[0] += fv
                 acc[1] += 1
