@@ -45,6 +45,13 @@
   .meta-note { color: var(--fg-muted); font-size: 0.78rem; margin: -14px 0 20px 0; }
   .meta-note a { color: var(--accent); }
 
+  .contact-banner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px;
+    padding: 9px 14px; margin: 0 0 18px 0; font-size: 0.82rem; color: var(--fg);
+  }
+  .contact-banner a { color: var(--accent); font-weight: 600; white-space: nowrap; }
+
   .filters {
     display: flex;
     flex-wrap: wrap;
@@ -176,6 +183,11 @@
     <p class="subtitle" id="subtitle">Loading…</p>
     <p class="meta-note" id="metaNote"></p>
   </header>
+
+  <div class="contact-banner">
+    <span>Contact <a href="mailto:liam@ecologyconsulting.ca">Liam Butters</a> (liam@ecologyconsulting.ca) for more information about these graphs.</span>
+    <a href="https://claude.ai/artifact/WKn8q4wTjLX7MJGQi8ZU32" target="_blank" rel="noopener">Method ↗</a>
+  </div>
 
   <div class="filters">
     <label>Regional district
@@ -317,7 +329,10 @@
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. GHGs, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/yr</span></div></div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. GHGs by year</h3><div class="chart-box" id="chartGhgAvg"></div></div>
-      <div class="chart-card"><h3>Energy Limit achieved, by year</h3><div class="chart-box" id="chartElStep"></div><p class="chart-note">% of homes in that year at each Energy Limit (GHG) level.</p></div>
+      <div class="chart-card"><h3>Emissions Level achieved, by year</h3><div class="chart-box" id="chartElStep"></div><p class="chart-note">% of homes in that year at each Emissions Level (EL).</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Fossil fuel burning system, by year</h3><div class="chart-box" id="chartFossilFuel"></div><p class="chart-note">Has a natural gas, propane or oil furnace, water heater, or supplementary heating/fireplace.</p></div>
     </div>
   </section>
 
@@ -364,11 +379,10 @@
   var DEFAULT_YEAR_TO = 2026;
   var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi', 'nla', 'nlr', 'floor_area', 'design_heat_loss', 'design_cool_load', 'tedi_imp', 'meui_imp'];
   // Steps 3-5's ACH50 airtightness targets (BC Energy Step Code, Part 9).
-  // Step 1 has no airtightness target; Step 2's figure is per RDH's Energy
-  // Step Code guidance, since the BC Building Code table text wasn't
-  // directly confirmable - see the data reference doc for sourcing.
+  // Steps 1-2 have no line drawn (Step 1 has no airtightness target; the
+  // Step 2 figure couldn't be confirmed against the official BC Building
+  // Code table, so it was dropped rather than shown unverified).
   var ACH_STEP_THRESHOLDS = [
-    { value: 3.0, label: 'Step 2' },
     { value: 2.5, label: 'Step 3' },
     { value: 1.5, label: 'Step 4' },
     { value: 1.0, label: 'Step 5' }
@@ -395,6 +409,11 @@
   function stepLabel(key) { return key === '0' ? 'Fail' : ('Step ' + key); }
   function elLabel(key) { return 'EL-' + key; }
   function asIs(key) { return key; }
+
+  // Years whose data only covers part of the year - labelled accordingly
+  // on chart axes and tooltips. Update as new partial-year extractions land.
+  var PARTIAL_YEAR_LABELS = { 2026: 'H1 2026' };
+  function yearLabel(y) { return PARTIAL_YEAR_LABELS[y] || String(y); }
 
   function includeUnknownYears(p) { return p.yearFrom <= MIN_YEAR && p.yearTo >= MAX_YEAR; }
 
@@ -620,30 +639,34 @@
     if (!rows.length) { emptyState(svg, width, height); return; }
     var x = d3.scaleBand().domain(yearRows.map(function (d) { return String(d.year); })).range([margin.left, width - margin.right]).padding(0.25);
     var thresholds = opts.thresholds || [];
-    var maxCandidates = rows.map(function (d) { return d[opts.key]; }).concat(thresholds.map(function (t) { return t.value; }));
-    var max = d3.max(maxCandidates) || 1;
-    var y = d3.scaleLinear().domain([0, max * 1.18]).nice().range([height - margin.bottom, margin.top]);
+    var valCandidates = rows.map(function (d) { return d[opts.key]; }).concat(thresholds.map(function (t) { return t.value; }));
+    var max = d3.max(valCandidates) || 1;
+    var min = Math.min(0, d3.min(valCandidates));
+    var y = d3.scaleLinear().domain([min, max * 1.18]).nice().range([height - margin.bottom, margin.top]);
+    var zeroY = y(0);
     var g = svg.append('g');
     g.append('g').selectAll('line').data(y.ticks(4)).join('line')
       .attr('x1', margin.left).attr('x2', width - margin.right)
       .attr('y1', function (d) { return y(d); }).attr('y2', function (d) { return y(d); }).style('stroke', 'var(--grid)');
     g.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')')
-      .call(d3.axisBottom(x).tickSize(0))
-      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
+      .call(d3.axisBottom(x).tickSize(0).tickFormat(function (d) { return yearLabel(Number(d)); }))
+      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.68rem'); });
     g.append('g').attr('transform', 'translate(' + margin.left + ',0)')
       .call(d3.axisLeft(y).ticks(4).tickFormat(function (d) { return opts.valueFmt(d); }))
       .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('line').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
 
     var bars = g.selectAll('rect').data(rows).join('rect')
       .attr('x', function (d) { return x(String(d.year)); }).attr('width', x.bandwidth())
-      .attr('y', function (d) { return y(d[opts.key]); }).attr('height', function (d) { return (height - margin.bottom) - y(d[opts.key]); })
+      .attr('y', function (d) { return Math.min(zeroY, y(d[opts.key])); })
+      .attr('height', function (d) { return Math.abs(y(d[opts.key]) - zeroY); })
       .attr('rx', 3).style('fill', COLORS[0]);
     g.selectAll('text.value-label').data(rows).join('text').attr('class', 'value-label')
-      .attr('x', function (d) { return x(String(d.year)) + x.bandwidth() / 2; }).attr('y', function (d) { return y(d[opts.key]) - 6; })
+      .attr('x', function (d) { return x(String(d.year)) + x.bandwidth() / 2; })
+      .attr('y', function (d) { return d[opts.key] < 0 ? y(d[opts.key]) + 13 : y(d[opts.key]) - 6; })
       .attr('text-anchor', 'middle').style('fill', 'var(--fg-muted)').style('font-size', '0.72rem')
       .text(function (d) { return opts.valueFmt(d[opts.key]); });
     bars.on('mousemove', function (event, d) {
-      var line = '<b>' + d.year + '</b><br>' + opts.valueFmt(d[opts.key]) + (opts.unit ? ' ' + opts.unit : '');
+      var line = '<b>' + yearLabel(d.year) + '</b><br>' + opts.valueFmt(d[opts.key]) + (opts.unit ? ' ' + opts.unit : '');
       line += opts.key === 'count' ? ' homes' : (' avg · ' + fmt0(d.count) + ' homes');
       showTooltip(el, line, event.clientX, event.clientY);
     }).on('mouseleave', hideTooltip);
@@ -681,8 +704,8 @@
       .attr('x1', margin.left).attr('x2', width - margin.right)
       .attr('y1', function (d) { return y(d); }).attr('y2', function (d) { return y(d); }).style('stroke', 'var(--grid)');
     g.append('g').attr('transform', 'translate(0,' + (height - margin.bottom) + ')')
-      .call(d3.axisBottom(x).tickSize(0))
-      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
+      .call(d3.axisBottom(x).tickSize(0).tickFormat(function (d) { return yearLabel(Number(d)); }))
+      .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.68rem'); });
     g.append('g').attr('transform', 'translate(' + margin.left + ',0)')
       .call(d3.axisLeft(y).tickValues([0, 50, 100]).tickFormat(function (d) { return d + '%'; }))
       .call(function (gg) { gg.select('.domain').remove(); gg.selectAll('line').remove(); gg.selectAll('text').style('fill', 'var(--axis)').style('font-size', '0.74rem'); });
@@ -702,7 +725,7 @@
           .attr('y', y(y1)).attr('height', Math.max(0, y(y0) - y(y1)))
           .style('fill', color(seg.category));
         rect.on('mousemove', function (event) {
-          showTooltip(el, '<b>' + labelFn(seg.category) + ', ' + yearData.year + '</b><br>' + seg.pct.toFixed(1) + '% (' + fmt0(seg.count) + ' homes)', event.clientX, event.clientY);
+          showTooltip(el, '<b>' + labelFn(seg.category) + ', ' + yearLabel(yearData.year) + '</b><br>' + seg.pct.toFixed(1) + '% (' + fmt0(seg.count) + ' homes)', event.clientX, event.clientY);
         }).on('mouseleave', hideTooltip);
         if ((y(y0) - y(y1)) > 15) {
           gy.append('text').attr('x', x.bandwidth() / 2).attr('y', (y(y0) + y(y1)) / 2).attr('dy', '0.32em')
@@ -795,6 +818,7 @@
       trend = computeYearTrend();
       el = document.getElementById('chartGhgAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg', label: 'Avg GHGs', valueFmt: fmt0, unit: 'kg CO2e/yr' });
       el = document.getElementById('chartElStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('el_achieved', { order: 'numeric' }), { label: 'EL achieved', labelFn: elLabel });
+      el = document.getElementById('chartFossilFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('fossil_fuel_system'), { label: 'Fossil fuel system' });
     } else if (tab === 'heating') {
       el = document.getElementById('chartHeatPumpByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('heat_pump'), { label: 'Heat pump adoption' });
       el = document.getElementById('chartCoolingByYear'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('cooling'), { label: 'Cooling adoption' });

@@ -341,6 +341,25 @@ def limiting_param_label(rowvals):
     return winners[0]
 
 
+# For the "fossil fuel burning system" breakdown: a home has one if its
+# furnace, its primary water heater, or either of its supplementary
+# heating/fireplace slots runs on a combustible fossil fuel. Wood-burning
+# fireplaces/stoves (a common SUPPHTGFUEL value) don't count - wood isn't a
+# fossil fuel.
+FOSSIL_FUEL_FIELDS = ['FURNACEFUEL', 'PDHWFUEL', 'SUPPHTGFUEL1', 'SUPPHTGFUEL2']
+FOSSIL_FUELS = {'natural gas', 'propane', 'oil'}
+FOSSIL_FUEL_PRESENT_LABEL = 'Fossil fuel present'
+FOSSIL_FUEL_ABSENT_LABEL = 'No fossil fuel'
+
+
+def fossil_fuel_system_label(rowvals):
+    for field in FOSSIL_FUEL_FIELDS:
+        raw = rowvals.get(field)
+        if isinstance(raw, str) and raw.strip().lower() in FOSSIL_FUELS:
+            return FOSSIL_FUEL_PRESENT_LABEL
+    return FOSSIL_FUEL_ABSENT_LABEL
+
+
 def main():
     wb_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_WORKBOOK
     print(f'Reading {wb_path.name} ...')
@@ -380,7 +399,8 @@ def main():
                 elem.clear()
     name_to_letter = {v: k for k, v in header.items() if v}
 
-    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD] + list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS)
+    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD] + \
+        list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS) + ['FURNACEFUEL', 'SUPPHTGFUEL1', 'SUPPHTGFUEL2']
     missing = [n for n in all_names if n not in name_to_letter]
     if missing:
         raise SystemExit(f'Columns not found in header: {missing}')
@@ -430,6 +450,7 @@ def main():
         limiting = limiting_param_label(rowvals)
         if limiting:
             cell['cat']['limiting_param'][limiting] += 1
+        cell['cat']['fossil_fuel_system'][fossil_fuel_system_label(rowvals)] += 1
 
     print('Streaming data rows (this can take a minute or two) ...')
     with z.open(sheet_part) as f:
