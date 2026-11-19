@@ -202,11 +202,36 @@
         </div>
       </div>
     </label>
-    <label>Year built from
-      <select id="yearFromFilter" aria-label="Year built from"></select>
+    <label>Building type
+      <div class="msel" id="houseTypeMsel">
+        <button type="button" class="msel-btn" id="houseTypeMselBtn" aria-haspopup="listbox">All building types</button>
+        <div class="msel-panel" id="houseTypeMselPanel" hidden>
+          <div class="msel-actions">
+            <button type="button" data-action="all">Select all</button>
+            <button type="button" data-action="none">Clear</button>
+          </div>
+          <div class="msel-options" id="houseTypeMselOptions"></div>
+        </div>
+      </div>
+    </label>
+    <label>MURB
+      <select id="murbFilter" aria-label="MURB filter">
+        <option value="">All homes</option>
+        <option value="murb">MURBs only</option>
+        <option value="non-murb">Non-MURBs only</option>
+      </select>
+    </label>
+    <label>Assign year by
+      <select id="yearModeFilter" aria-label="Assign year by">
+        <option value="built">Year built</option>
+        <option value="entry">Entry date</option>
+      </select>
+    </label>
+    <label><span id="yearFromLabel">Year built from</span>
+      <select id="yearFromFilter" aria-label="Year from"></select>
     </label>
     <label>to
-      <select id="yearToFilter" aria-label="Year built to"></select>
+      <select id="yearToFilter" aria-label="Year to"></select>
     </label>
     <button class="reset-btn" id="resetFilters" type="button">Reset filters</button>
   </div>
@@ -224,32 +249,36 @@
   <section id="tab-airtightness" class="tab-panel" data-panel="airtightness">
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. ACH50 by year built</h3><div class="chart-box" id="chartAchAvg"></div></div>
-      <div class="chart-card"><h3>Airtightness step achieved, by year built</h3><div class="chart-box" id="chartAchStep"></div><p class="chart-note">% of homes built that year at each airtightness step.</p></div>
+      <div class="chart-card"><h3>Avg. ACH50 by year</h3><div class="chart-box" id="chartAchAvg"></div></div>
+      <div class="chart-card"><h3>Airtightness step achieved, by year</h3><div class="chart-box" id="chartAchStep"></div><p class="chart-note">% of homes in that year at each airtightness step.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. NLA by year</h3><div class="chart-box" id="chartNlaAvg"></div><p class="chart-note">Normalized Leakage Area.</p></div>
+      <div class="chart-card"><h3>Avg. NLR by year</h3><div class="chart-box" id="chartNlrAvg"></div><p class="chart-note">Normalized Leakage Rate.</p></div>
     </div>
   </section>
 
   <section id="tab-meui" class="tab-panel" data-panel="meui" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. MEUI, current filters</span><span class="kpi-value" id="kpiMeui">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. MEUI by year built</h3><div class="chart-box" id="chartMeuiAvg"></div></div>
-      <div class="chart-card"><h3>MEUI step achieved, by year built</h3><div class="chart-box" id="chartMeuiStep"></div><p class="chart-note">% of homes built that year at each MEUI step.</p></div>
+      <div class="chart-card"><h3>Avg. MEUI by year</h3><div class="chart-box" id="chartMeuiAvg"></div></div>
+      <div class="chart-card"><h3>MEUI step achieved, by year</h3><div class="chart-box" id="chartMeuiStep"></div><p class="chart-note">% of homes in that year at each MEUI step.</p></div>
     </div>
   </section>
 
   <section id="tab-tedi" class="tab-panel" data-panel="tedi" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. TEDI, current filters</span><span class="kpi-value" id="kpiTedi">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. TEDI by year built</h3><div class="chart-box" id="chartTediAvg"></div></div>
-      <div class="chart-card"><h3>TEDI step achieved, by year built</h3><div class="chart-box" id="chartTediStep"></div><p class="chart-note">% of homes built that year at each TEDI step.</p></div>
+      <div class="chart-card"><h3>Avg. TEDI by year</h3><div class="chart-box" id="chartTediAvg"></div></div>
+      <div class="chart-card"><h3>TEDI step achieved, by year</h3><div class="chart-box" id="chartTediStep"></div><p class="chart-note">% of homes in that year at each TEDI step.</p></div>
     </div>
   </section>
 
   <section id="tab-emissions" class="tab-panel" data-panel="emissions" hidden>
     <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. GHGs, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/yr</span></div></div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. GHGs by year built</h3><div class="chart-box" id="chartGhgAvg"></div></div>
-      <div class="chart-card"><h3>Energy Limit achieved, by year built</h3><div class="chart-box" id="chartElStep"></div><p class="chart-note">% of homes built that year at each Energy Limit (GHG) level.</p></div>
+      <div class="chart-card"><h3>Avg. GHGs by year</h3><div class="chart-box" id="chartGhgAvg"></div></div>
+      <div class="chart-card"><h3>Energy Limit achieved, by year</h3><div class="chart-box" id="chartElStep"></div><p class="chart-note">% of homes in that year at each Energy Limit (GHG) level.</p></div>
     </div>
   </section>
 
@@ -265,27 +294,37 @@
       </div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Heat pump adoption, by year built</h3><div class="chart-box" id="chartHeatPumpByYear"></div></div>
-      <div class="chart-card"><h3>Cooling adoption, by year built</h3><div class="chart-box" id="chartCoolingByYear"></div></div>
+      <div class="chart-card"><h3>Heat pump adoption, by year</h3><div class="chart-box" id="chartHeatPumpByYear"></div></div>
+      <div class="chart-card"><h3>Cooling adoption, by year</h3><div class="chart-box" id="chartCoolingByYear"></div></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Primary heating system, by year built</h3><div class="chart-box" id="chartHeatingSystem"></div></div>
-      <div class="chart-card"><h3>Primary heating fuel, by year built</h3><div class="chart-box" id="chartHeatingFuel"></div></div>
+      <div class="chart-card"><h3>Primary heating system, by year</h3><div class="chart-box" id="chartHeatingSystem"></div></div>
+      <div class="chart-card"><h3>Primary heating fuel, by year</h3><div class="chart-box" id="chartHeatingFuel"></div></div>
     </div>
   </section>
 
   <section id="tab-dhw" class="tab-panel" data-panel="dhw" hidden>
     <div class="chart-row">
-      <div class="chart-card"><h3>Water heating fuel, by year built</h3><div class="chart-box" id="chartDhwFuel"></div></div>
+      <div class="chart-card"><h3>Water heating fuel, by year</h3><div class="chart-box" id="chartDhwFuel"></div></div>
     </div>
   </section>
 
   <section id="tab-overall" class="tab-panel" data-panel="overall" hidden>
     <div class="chart-row">
-      <div class="chart-card wide"><h3>Overall Step Code achieved, by year built</h3><div class="chart-box" id="chartOverallStep"></div><p class="chart-note">% of homes built that year at each overall BC Energy Step Code step.</p></div>
+      <div class="chart-card wide"><h3>Entries by year</h3><div class="chart-box" id="chartEntryCount"></div><p class="chart-note">Number of home energy evaluations matching the current filters, by year.</p></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card wide"><h3>Limiting parameter, by year built</h3><div class="chart-box" id="chartLimitingParam"></div><p class="chart-note">Whichever of airtightness, MEUI or TEDI step achieved is lowest is what's holding the home back from a higher overall step; a combined label means two or more tied.</p></div>
+      <div class="chart-card wide"><h3>Overall Step Code achieved, by year</h3><div class="chart-box" id="chartOverallStep"></div><p class="chart-note">% of homes in that year at each overall BC Energy Step Code step.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Limiting parameter, by year</h3><div class="chart-box" id="chartLimitingParam"></div><p class="chart-note">Whichever of airtightness, MEUI or TEDI step achieved is lowest is what's holding the home back from a higher overall step; a combined label means two or more tied.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. heated floor area, by year</h3><div class="chart-box" id="chartFloorAreaAvg"></div></div>
+      <div class="chart-card"><h3>Avg. design heat loss, by year</h3><div class="chart-box" id="chartDesignHeatLossAvg"></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. design cooling load, by year</h3><div class="chart-box" id="chartDesignCoolLoadAvg"></div></div>
     </div>
   </section>
 
@@ -303,11 +342,15 @@
   var MAX_YEAR = 2026;
   var DEFAULT_YEAR_FROM = 2021;
   var DEFAULT_YEAR_TO = 2026;
-  var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi'];
+  var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi', 'nla', 'nlr', 'floor_area', 'design_heat_loss', 'design_cool_load'];
   var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f', '#4a9bb0', '#a65d6b'];
 
+  var DATA = null;
   var RAW = [];
-  var state = { cities: [], regions: [], yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO };
+  var state = {
+    cities: [], regions: [], houseTypes: [], murb: '', yearMode: 'built',
+    yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO
+  };
   var currentTab = 'airtightness';
 
   function fmtNum(decimals) {
@@ -327,6 +370,9 @@
   function cellInRange(cell, p) {
     if (p.regions && p.regions.length && p.regions.indexOf(cell.region) === -1) return false;
     if (p.cities && p.cities.length && p.cities.indexOf(cell.city) === -1) return false;
+    if (p.houseTypes && p.houseTypes.length && p.houseTypes.indexOf(cell.house_type) === -1) return false;
+    if (p.murb === 'murb' && !cell.is_murb) return false;
+    if (p.murb === 'non-murb' && cell.is_murb) return false;
     if (typeof cell.year === 'number') {
       if (cell.year < p.yearFrom || cell.year > p.yearTo) return false;
     } else if (!includeUnknownYears(p)) {
@@ -415,10 +461,8 @@
     var byYear = {};
     for (var i = 0; i < RAW.length; i++) {
       var cell = RAW[i];
-      if (state.regions.length && state.regions.indexOf(cell.region) === -1) continue;
-      if (state.cities.length && state.cities.indexOf(cell.city) === -1) continue;
+      if (!cellInRange(cell, state)) continue;
       if (typeof cell.year !== 'number') continue;
-      if (cell.year < state.yearFrom || cell.year > state.yearTo) continue;
       var hist = cell.cat && cell.cat[categoryKey];
       if (!hist) continue;
       var acc = byYear[cell.year] || (byYear[cell.year] = {});
@@ -647,7 +691,8 @@
     var hpFill = document.getElementById('heatPumpFill'); if (hpFill) hpFill.style.width = (s.pctHeatPump || 0) + '%';
     var clFill = document.getElementById('cooledFill'); if (clFill) clFill.style.width = (s.pctCooled || 0) + '%';
 
-    setText('subtitle', fmt0(s.count) + ' homes evaluated in ' + describeSelection() + ', built ' + state.yearFrom + '–' + state.yearTo + '.');
+    var yearVerb = state.yearMode === 'entry' ? 'entered' : 'built';
+    setText('subtitle', fmt0(s.count) + ' homes evaluated in ' + describeSelection() + ', ' + yearVerb + ' ' + state.yearFrom + '–' + state.yearTo + '.');
   }
 
   function renderTab(tab) {
@@ -656,6 +701,8 @@
       trend = computeYearTrend();
       el = document.getElementById('chartAchAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ach', label: 'Avg ACH50', valueFmt: fmt2, unit: 'ACH50' });
       el = document.getElementById('chartAchStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('ach_step', { order: 'numeric' }), { label: 'Airtightness step', labelFn: stepLabel });
+      el = document.getElementById('chartNlaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nla', label: 'Avg NLA', valueFmt: fmt2, unit: 'NLA' });
+      el = document.getElementById('chartNlrAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nlr', label: 'Avg NLR', valueFmt: fmt2, unit: 'NLR' });
     } else if (tab === 'meui') {
       trend = computeYearTrend();
       el = document.getElementById('chartMeuiAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'meui', label: 'Avg MEUI', valueFmt: fmt1, unit: 'kWh/m²/yr' });
@@ -676,8 +723,13 @@
     } else if (tab === 'dhw') {
       el = document.getElementById('chartDhwFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_fuel'), { label: 'DHW fuel' });
     } else if (tab === 'overall') {
+      trend = computeYearTrend();
+      el = document.getElementById('chartEntryCount'); if (el) drawAvgByYearBars(el, trend, { key: 'count', label: 'Entries', valueFmt: fmt0, unit: 'homes' });
       el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
       el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10 }), { label: 'Limiting parameter' });
+      el = document.getElementById('chartFloorAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'floor_area', label: 'Avg heated floor area', valueFmt: fmt0, unit: 'm²' });
+      el = document.getElementById('chartDesignHeatLossAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_heat_loss', label: 'Avg design heat loss', valueFmt: fmt0, unit: 'W' });
+      el = document.getElementById('chartDesignCoolLoadAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_cool_load', label: 'Avg design cooling load', valueFmt: fmt0, unit: 'W' });
     }
   }
 
@@ -739,6 +791,7 @@
 
   var lastRegionNames = [];
   var lastCityKeys = [];
+  var lastHouseTypeKeys = [];
 
   function renderFilterOptions() {
     var regionTotals = {};
@@ -783,6 +836,25 @@
     document.getElementById('cityMselBtn').textContent =
       multiSelectSummary(state.cities, state.regions.length ? 'All in selected regional districts' : 'All municipalities', 'municipality', 'municipalities');
 
+    var houseTypeTotals = {};
+    RAW.forEach(function (c) { houseTypeTotals[c.house_type] = (houseTypeTotals[c.house_type] || 0) + c.count; });
+    lastHouseTypeKeys = Object.keys(houseTypeTotals).sort(function (a, b) { return houseTypeTotals[b] - houseTypeTotals[a]; });
+    state.houseTypes = state.houseTypes.filter(function (h) { return Object.prototype.hasOwnProperty.call(houseTypeTotals, h); });
+
+    var houseTypeItems = lastHouseTypeKeys.map(function (h) { return { key: h, label: h, count: houseTypeTotals[h] }; });
+    renderCheckboxOptions(document.getElementById('houseTypeMselOptions'), houseTypeItems, new Set(state.houseTypes), function (key, checked) {
+      var idx = state.houseTypes.indexOf(key);
+      if (checked && idx === -1) state.houseTypes.push(key);
+      if (!checked && idx !== -1) state.houseTypes.splice(idx, 1);
+      renderAll();
+    });
+    document.getElementById('houseTypeMselBtn').textContent =
+      multiSelectSummary(state.houseTypes, 'All building types', 'building type', 'building types');
+
+    document.getElementById('murbFilter').value = state.murb;
+    document.getElementById('yearModeFilter').value = state.yearMode;
+    document.getElementById('yearFromLabel').textContent = state.yearMode === 'entry' ? 'Entry year from' : 'Year built from';
+
     var years = []; for (var y = MIN_YEAR; y <= MAX_YEAR; y++) years.push(y);
     var fromSel = document.getElementById('yearFromFilter');
     var toSel = document.getElementById('yearToFilter');
@@ -824,6 +896,11 @@
     else if (action === 'none') { state.cities = []; renderAll(); }
   });
   document.getElementById('cityMselSearch').addEventListener('input', renderFilterOptions);
+  document.getElementById('houseTypeMselPanel').addEventListener('click', function (event) {
+    var action = event.target.getAttribute('data-action');
+    if (action === 'all') { state.houseTypes = lastHouseTypeKeys.slice(); renderAll(); }
+    else if (action === 'none') { state.houseTypes = []; renderAll(); }
+  });
 
   function renderAll() {
     renderFilterOptions();
@@ -838,12 +915,30 @@
 
   // ---- controls ----
 
+  function switchYearMode(mode) {
+    state.yearMode = mode;
+    RAW = (DATA && DATA.year_modes[mode].cells) || [];
+    var years = (DATA && DATA.year_modes[mode].years || []).filter(function (y) { return typeof y === 'number'; });
+    MIN_YEAR = years.length ? Math.min.apply(null, years) : 2014;
+    MAX_YEAR = years.length ? Math.max.apply(null, years) : 2026;
+    state.yearFrom = Math.max(MIN_YEAR, Math.min(DEFAULT_YEAR_FROM, MAX_YEAR));
+    state.yearTo = Math.min(MAX_YEAR, Math.max(DEFAULT_YEAR_TO, MIN_YEAR));
+    renderAll();
+  }
+
   document.getElementById('yearFromFilter').addEventListener('change', function () { setState({ yearFrom: Math.min(Number(this.value), state.yearTo) }); });
   document.getElementById('yearToFilter').addEventListener('change', function () { setState({ yearTo: Math.max(Number(this.value), state.yearFrom) }); });
+  document.getElementById('murbFilter').addEventListener('change', function () { setState({ murb: this.value }); });
+  document.getElementById('yearModeFilter').addEventListener('change', function () { switchYearMode(this.value); });
   document.getElementById('resetFilters').addEventListener('click', function () {
     document.getElementById('cityMselSearch').value = '';
     closeAllMsels();
-    setState({ cities: [], regions: [], yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
+    state.yearMode = 'built';
+    RAW = (DATA && DATA.year_modes.built.cells) || [];
+    var years = (DATA && DATA.year_modes.built.years || []).filter(function (y) { return typeof y === 'number'; });
+    MIN_YEAR = years.length ? Math.min.apply(null, years) : 2014;
+    MAX_YEAR = years.length ? Math.max.apply(null, years) : 2026;
+    setState({ cities: [], regions: [], houseTypes: [], murb: '', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
   });
 
   document.getElementById('tabNav').addEventListener('click', function (event) {
@@ -862,8 +957,10 @@
   // ---- boot ----
 
   fetch('data.json').then(function (r) { return r.json(); }).then(function (json) {
-    RAW = json.cells || [];
-    var years = (json.years || []).filter(function (y) { return typeof y === 'number'; });
+    DATA = json;
+    state.yearMode = json.year_mode_default || 'built';
+    RAW = json.year_modes[state.yearMode].cells || [];
+    var years = (json.year_modes[state.yearMode].years || []).filter(function (y) { return typeof y === 'number'; });
     if (years.length) { MIN_YEAR = Math.min.apply(null, years); MAX_YEAR = Math.max.apply(null, years); }
     state.yearFrom = Math.max(MIN_YEAR, Math.min(DEFAULT_YEAR_FROM, MAX_YEAR));
     state.yearTo = Math.min(MAX_YEAR, Math.max(DEFAULT_YEAR_TO, MIN_YEAR));

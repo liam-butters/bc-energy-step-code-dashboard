@@ -39,6 +39,10 @@ NUMERIC_FIELDS = {
     'MAINWALLINS': 'wall_rsi',
     'FNDWALLINS': 'fndwall_rsi',
     'HEATEDFLOORAREA': 'floor_area',
+    'NLA': 'nla',
+    'NLR': 'nlr',
+    'EGHDESHTLOSS': 'design_heat_loss',
+    'ERSDesCoolLoss': 'design_cool_load',
 }
 
 CATEGORY_FIELDS = {
@@ -55,11 +59,20 @@ CATEGORY_FIELDS = {
     'PDHWFUEL': 'dhw_fuel',
     'AIRCONDTYPE': 'cooling_type',
     'BUILDINGTYPE': 'building_type',
-    'TYPEOFHOUSE': 'house_type',
 }
 
 CITY_FIELD = 'CLIENTCITY'
 YEAR_FIELD = 'YEARBUILT'
+# An entry can be assigned to a year two ways: when the home was built, or
+# when it was entered/evaluated. The dashboard lets the user pick, so both
+# are extracted into their own cube (see YEAR_MODES below).
+ENTRY_DATE_FIELD = 'ENTRYDATE'
+# House type (single detached, row house, duplex, ...) and MURB/non-MURB
+# split the cube like city/year/region rather than being just another
+# category histogram, so those filters can actually exclude homes, not just
+# relabel them.
+HOUSE_TYPE_FIELD = 'TYPEOFHOUSE'
+MURB_FIELD = 'UNITSMURBS'
 
 MIN_PLAUSIBLE_YEAR = 1990
 MAX_PLAUSIBLE_YEAR = datetime.date.today().year + 1
@@ -195,6 +208,20 @@ CITY_SPELLING_FIXES = {
 }
 
 
+HOUSE_TYPE_FIXES = {
+    'Single detached': 'Single Detached',
+}
+
+
+def normalize_house_type(raw):
+    if not raw:
+        return 'Unknown'
+    name = ' '.join(raw.strip().split())
+    if not name:
+        return 'Unknown'
+    return HOUSE_TYPE_FIXES.get(name, name)
+
+
 def normalize_year(raw):
     if not raw:
         return None
@@ -205,6 +232,33 @@ def normalize_year(raw):
     if y < MIN_PLAUSIBLE_YEAR or y > MAX_PLAUSIBLE_YEAR:
         return None
     return y
+
+
+# Excel stores dates as a day count from 1899-12-30 (the epoch is a day
+# earlier than 1900-01-01 to reproduce Excel's fictitious Feb 29 1900).
+EXCEL_EPOCH = datetime.date(1899, 12, 30)
+
+
+def entry_date_to_year(raw):
+    if raw is None or raw == '':
+        return None
+    try:
+        serial = float(raw)
+    except ValueError:
+        return None
+    try:
+        d = EXCEL_EPOCH + datetime.timedelta(days=serial)
+    except OverflowError:
+        return None
+    y = d.year
+    if y < MIN_PLAUSIBLE_YEAR or y > MAX_PLAUSIBLE_YEAR:
+        return None
+    return y
+
+
+def is_murb(raw):
+    v = to_float(raw)
+    return bool(v)
 
 
 def to_float(raw):
@@ -280,21 +334,29 @@ def main():
                 elem.clear()
     name_to_letter = {v: k for k, v in header.items() if v}
 
-    all_names = [CITY_FIELD, YEAR_FIELD] + list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS)
+    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD] + list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS)
     missing = [n for n in all_names if n not in name_to_letter]
     if missing:
         raise SystemExit(f'Columns not found in header: {missing}')
     wanted_letters = {name_to_letter[n] for n in all_names}
     letter_to_name = {name_to_letter[n]: n for n in all_names}
 
-    cube = defaultdict(lambda: {
-        'count': 0,
-        'num': defaultdict(lambda: [0.0, 0]),  # [sum, count]
-        'cat': defaultdict(lambda: defaultdict(int)),
-    })
+    def new_cube():
+        return defaultdict(lambda: {
+            'count': 0,
+            'num': defaultdict(lambda: [0.0, 0]),  # [sum, count]
+            'cat': defaultdict(lambda: defaultdict(int)),
+        })
+
+    # Two independent cubes, one per way of assigning an entry to a year -
+    # the user picks which to view in the dashboard.
+    YEAR_MODES = ('built', 'entry')
+    cubes = {mode: new_cube() for mode in YEAR_MODES}
+    year_counts = {mode: defaultdict(int) for mode in YEAR_MODES}
     city_counts = defaultdict(int)
     region_counts = defaultdict(int)
-    year_counts = defaultdict(int)
+    house_type_counts = defaultdict(int)
+    murb_counts = defaultdict(int)
     excluded_unmapped = defaultdict(int)
     # key -> lowercased value -> {original casing: count}, so values that only
     # differ by case (e.g. "Natural gas" vs "Natural Gas") can be merged into
@@ -302,6 +364,25 @@ def main():
     # like "Furnace w/o AC".
     case_variants = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     total_rows = 0
+
+    def apply_row(cell, rowvals):
+        cell['count'] += 1
+        for field, key in NUMERIC_FIELDS.items():
+            fv = to_float(rowvals.get(field))
+            if fv is not None:
+                acc = cell['num'][key]
+                acc[0] += fv
+                acc[1] += 1
+        for field, key in CATEGORY_FIELDS.items():
+            cv = rowvals.get(field)
+            cv = cv.strip() if isinstance(cv, str) else cv
+            if cv:
+                cell['cat'][key][cv] += 1
+                if isinstance(cv, str):
+                    case_variants[key][cv.lower()][cv] += 1
+        limiting = limiting_param_label(rowvals)
+        if limiting:
+            cell['cat']['limiting_param'][limiting] += 1
 
     print('Streaming data rows (this can take a minute or two) ...')
     with z.open(sheet_part) as f:
@@ -328,9 +409,15 @@ def main():
                 continue
 
             city = normalize_city(rowvals.get(CITY_FIELD))
-            year = normalize_year(rowvals.get(YEAR_FIELD))
-            year_key = year if year is not None else 'Unknown'
+            year_built = normalize_year(rowvals.get(YEAR_FIELD))
+            year_entry = entry_date_to_year(rowvals.get(ENTRY_DATE_FIELD))
+            year_keys = {
+                'built': year_built if year_built is not None else 'Unknown',
+                'entry': year_entry if year_entry is not None else 'Unknown',
+            }
             region = CITY_TO_REGION.get(city, UNMAPPED_LABEL)
+            house_type = normalize_house_type(rowvals.get(HOUSE_TYPE_FIELD))
+            murb = is_murb(rowvals.get(MURB_FIELD))
 
             if region == UNMAPPED_LABEL:
                 excluded_unmapped[city] += 1
@@ -339,33 +426,22 @@ def main():
 
             city_counts[city] += 1
             region_counts[region] += 1
-            year_counts[year_key] += 1
+            house_type_counts[house_type] += 1
+            murb_counts['MURB' if murb else 'Non-MURB'] += 1
 
-            cell = cube[(city, year_key)]
-            cell['count'] += 1
-            cell['region'] = region
-            for field, key in NUMERIC_FIELDS.items():
-                fv = to_float(rowvals.get(field))
-                if fv is not None:
-                    acc = cell['num'][key]
-                    acc[0] += fv
-                    acc[1] += 1
-            for field, key in CATEGORY_FIELDS.items():
-                cv = rowvals.get(field)
-                cv = cv.strip() if isinstance(cv, str) else cv
-                if cv:
-                    cell['cat'][key][cv] += 1
-                    if isinstance(cv, str):
-                        case_variants[key][cv.lower()][cv] += 1
-
-            limiting = limiting_param_label(rowvals)
-            if limiting:
-                cell['cat']['limiting_param'][limiting] += 1
+            for mode in YEAR_MODES:
+                year_key = year_keys[mode]
+                year_counts[mode][year_key] += 1
+                cell = cubes[mode][(city, year_key, house_type, murb)]
+                cell['region'] = region
+                cell['house_type'] = house_type
+                cell['is_murb'] = murb
+                apply_row(cell, rowvals)
 
             if total_rows % 20000 == 0:
                 print(f'  ... {total_rows} rows')
 
-    print(f'Done: {total_rows} rows, {len(cube)} (city, year) cells')
+    print(f'Done: {total_rows} rows, ' + ', '.join(f'{len(cubes[m])} {m} cells' for m in YEAR_MODES))
 
     # Merge category values that only differ by case, keeping the most
     # common casing for each.
@@ -374,29 +450,38 @@ def main():
         for key, by_lower in case_variants.items()
     }
     merged_count = 0
-    for cell in cube.values():
-        for key, hist in cell['cat'].items():
-            fixed = defaultdict(int)
-            for cv, n in hist.items():
-                canon = canonical.get(key, {}).get(cv.lower(), cv) if isinstance(cv, str) else cv
-                if canon != cv:
-                    merged_count += 1
-                fixed[canon] += n
-            cell['cat'][key] = fixed
+    for mode in YEAR_MODES:
+        for cell in cubes[mode].values():
+            for key, hist in cell['cat'].items():
+                fixed = defaultdict(int)
+                for cv, n in hist.items():
+                    canon = canonical.get(key, {}).get(cv.lower(), cv) if isinstance(cv, str) else cv
+                    if canon != cv:
+                        merged_count += 1
+                    fixed[canon] += n
+                cell['cat'][key] = fixed
     if merged_count:
         print(f'Merged {merged_count} case-variant category values (e.g. "Natural gas" / "Natural Gas") '
               f'into their most common casing')
 
-    cells_out = []
-    for (city, year_key), cell in cube.items():
-        cells_out.append({
-            'city': city,
-            'region': cell['region'],
-            'year': year_key,
-            'count': cell['count'],
-            'num': {k: v for k, v in cell['num'].items()},
-            'cat': {k: dict(v) for k, v in cell['cat'].items()},
-        })
+    year_modes_out = {}
+    for mode in YEAR_MODES:
+        cells_out = []
+        for (city, year_key, house_type, murb), cell in cubes[mode].items():
+            cells_out.append({
+                'city': city,
+                'region': cell['region'],
+                'year': year_key,
+                'house_type': house_type,
+                'is_murb': cell['is_murb'],
+                'count': cell['count'],
+                'num': {k: v for k, v in cell['num'].items()},
+                'cat': {k: dict(v) for k, v in cell['cat'].items()},
+            })
+        year_modes_out[mode] = {
+            'years': sorted([y for y in year_counts[mode] if isinstance(y, int)]),
+            'cells': cells_out,
+        }
 
     out = {
         'generated_at': datetime.datetime.now().isoformat(timespec='seconds'),
@@ -406,8 +491,11 @@ def main():
         'city_counts': city_counts,
         'regions': sorted(region_counts, key=lambda r: -region_counts[r]),
         'region_counts': region_counts,
-        'years': sorted([y for y in year_counts if isinstance(y, int)]),
-        'cells': cells_out,
+        'house_types': sorted(house_type_counts, key=lambda h: -house_type_counts[h]),
+        'house_type_counts': house_type_counts,
+        'murb_counts': murb_counts,
+        'year_mode_default': 'built',
+        'year_modes': year_modes_out,
     }
 
     OUT_PATH.write_text(json.dumps(out, separators=(',', ':')), encoding='utf-8')
