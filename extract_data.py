@@ -30,12 +30,13 @@ DEFAULT_WORKBOOK = Path(__file__).parent.parent / 'NRCan Database Analysis.xlsx'
 OUT_PATH = Path(__file__).parent / 'data.json'
 
 NUMERIC_FIELDS = {
-    # Use the calculated MEUI/TEDI columns, not the raw "MEUI"/"TEDI" ones:
-    # the raw columns use 0 as a "not computed" sentinel for ~66% of rows
-    # (physically implausible for a real home) while the calculated columns
-    # are consistently populated.
+    # Use the calculated MEUI/TEDI/NLR columns, not the raw "MEUI"/"TEDI"/
+    # "NLR" ones: the raw columns use 0 as a "not computed" sentinel for a
+    # large fraction of rows (physically implausible for a real home) while
+    # the calculated columns are consistently populated.
     'Calculated MEUI': 'meui',
     "Calc'd TEDI": 'tedi',
+    "Calc'd NLR": 'nlr',
     'Rounded ACH': 'ach',
     'GHGs': 'ghg',
     'CEILINS': 'ceil_rsi',
@@ -43,15 +44,21 @@ NUMERIC_FIELDS = {
     'FNDWALLINS': 'fndwall_rsi',
     'HEATEDFLOORAREA': 'floor_area',
     'NLA': 'nla',
-    'NLR': 'nlr',
     'EGHDESHTLOSS': 'design_heat_loss',
     'ERSDesCoolLoss': 'design_cool_load',
+    # Fractional (0-1) improvement over the reference house, per CSA F280 /
+    # the step code's own methodology - not the per-step target columns
+    # ("TEDI % Imp Step 3" etc.), which are thresholds, not achieved values.
+    "Calc'd TEDI % Imp": 'tedi_imp',
+    # Unlike the TEDI version, this column is already a percentage (not a
+    # 0-1 fraction).
+    'Calculated MEUI % Improvement': 'meui_imp',
 }
 
 # These columns use 0 as a "not computed / not applicable" sentinel instead
 # of leaving the cell blank. Treat 0 as missing for these keys so it doesn't
 # drag averages toward zero.
-ZERO_AS_MISSING = {'nlr', 'design_cool_load'}
+ZERO_AS_MISSING = {'design_cool_load'}
 
 CATEGORY_FIELDS = {
     'Step Achieved': 'step_achieved',
@@ -81,6 +88,8 @@ ENTRY_DATE_FIELD = 'ENTRYDATE'
 # relabel them.
 HOUSE_TYPE_FIELD = 'TYPEOFHOUSE'
 MURB_FIELD = 'UNITSMURBS'
+# Climate zone (4, 5, 6, 7.1, 7.2) is also a cube dimension, same reasoning.
+CLIMATE_ZONE_FIELD = 'Climate Zone'
 
 MIN_PLAUSIBLE_YEAR = 1990
 MAX_PLAUSIBLE_YEAR = datetime.date.today().year + 1
@@ -297,6 +306,14 @@ def to_float(raw):
         return None
 
 
+def normalize_climate_zone(raw):
+    v = to_float(raw)
+    if v is None:
+        return 'Unknown'
+    label = str(int(v)) if v == int(v) else str(v)
+    return 'Zone ' + label
+
+
 # For the "limiting parameter" breakdown: whichever of airtightness/MEUI/TEDI
 # step-achieved is lowest is the one holding the home back from a higher
 # overall step. Ties (two or more fields sharing the lowest value) are
@@ -363,7 +380,7 @@ def main():
                 elem.clear()
     name_to_letter = {v: k for k, v in header.items() if v}
 
-    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD] + list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS)
+    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD] + list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS)
     missing = [n for n in all_names if n not in name_to_letter]
     if missing:
         raise SystemExit(f'Columns not found in header: {missing}')
@@ -386,6 +403,7 @@ def main():
     region_counts = defaultdict(int)
     house_type_counts = defaultdict(int)
     murb_counts = defaultdict(int)
+    climate_zone_counts = defaultdict(int)
     excluded_unmapped = defaultdict(int)
     # key -> lowercased value -> {original casing: count}, so values that only
     # differ by case (e.g. "Natural gas" vs "Natural Gas") can be merged into
@@ -445,8 +463,15 @@ def main():
                 'entry': year_entry if year_entry is not None else 'Unknown',
             }
             region = CITY_TO_REGION.get(city, UNMAPPED_LABEL)
+            # "Rdek" alone (the city field just says "RDEK", with no actual
+            # place name) isn't a municipality - display it as Unknown, but
+            # only after the region lookup above, which still needs "Rdek"
+            # to resolve to East Kootenay.
+            if city == 'Rdek':
+                city = 'Unknown'
             house_type = normalize_house_type(rowvals.get(HOUSE_TYPE_FIELD))
             murb = is_murb(rowvals.get(MURB_FIELD))
+            climate_zone = normalize_climate_zone(rowvals.get(CLIMATE_ZONE_FIELD))
 
             if region == UNMAPPED_LABEL:
                 excluded_unmapped[city] += 1
@@ -457,14 +482,16 @@ def main():
             region_counts[region] += 1
             house_type_counts[house_type] += 1
             murb_counts['MURB' if murb else 'Non-MURB'] += 1
+            climate_zone_counts[climate_zone] += 1
 
             for mode in YEAR_MODES:
                 year_key = year_keys[mode]
                 year_counts[mode][year_key] += 1
-                cell = cubes[mode][(city, year_key, house_type, murb)]
+                cell = cubes[mode][(city, year_key, house_type, murb, climate_zone)]
                 cell['region'] = region
                 cell['house_type'] = house_type
                 cell['is_murb'] = murb
+                cell['climate_zone'] = climate_zone
                 apply_row(cell, rowvals)
 
             if total_rows % 20000 == 0:
@@ -496,13 +523,14 @@ def main():
     year_modes_out = {}
     for mode in YEAR_MODES:
         cells_out = []
-        for (city, year_key, house_type, murb), cell in cubes[mode].items():
+        for (city, year_key, house_type, murb, climate_zone), cell in cubes[mode].items():
             cells_out.append({
                 'city': city,
                 'region': cell['region'],
                 'year': year_key,
                 'house_type': house_type,
                 'is_murb': cell['is_murb'],
+                'climate_zone': cell['climate_zone'],
                 'count': cell['count'],
                 'num': {k: v for k, v in cell['num'].items()},
                 'cat': {k: dict(v) for k, v in cell['cat'].items()},
@@ -523,6 +551,8 @@ def main():
         'house_types': sorted(house_type_counts, key=lambda h: -house_type_counts[h]),
         'house_type_counts': house_type_counts,
         'murb_counts': murb_counts,
+        'climate_zones': sorted(climate_zone_counts, key=lambda z: -climate_zone_counts[z]),
+        'climate_zone_counts': climate_zone_counts,
         'year_mode_default': 'built',
         'year_modes': year_modes_out,
     }

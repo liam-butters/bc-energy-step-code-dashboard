@@ -215,6 +215,18 @@
         </div>
       </div>
     </label>
+    <label>Climate zone
+      <div class="msel" id="climateZoneMsel">
+        <button type="button" class="msel-btn" id="climateZoneMselBtn" aria-haspopup="listbox">All climate zones</button>
+        <div class="msel-panel" id="climateZoneMselPanel" hidden>
+          <div class="msel-actions">
+            <button type="button" data-action="all">Select all</button>
+            <button type="button" data-action="none">Clear</button>
+          </div>
+          <div class="msel-options" id="climateZoneMselOptions"></div>
+        </div>
+      </div>
+    </label>
     <label>MURB
       <select id="murbFilter" aria-label="MURB filter">
         <option value="">All homes</option>
@@ -285,6 +297,9 @@
       <div class="chart-card"><h3>Avg. MEUI by year</h3><div class="chart-box" id="chartMeuiAvg"></div></div>
       <div class="chart-card"><h3>MEUI step achieved, by year</h3><div class="chart-box" id="chartMeuiStep"></div><p class="chart-note">% of homes in that year at each MEUI step.</p></div>
     </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Avg. MEUI % improvement, by year</h3><div class="chart-box" id="chartMeuiImpAvg"></div><p class="chart-note">% improvement over the CSA F280 reference house (Calculated MEUI % Improvement column).</p></div>
+    </div>
   </section>
 
   <section id="tab-tedi" class="tab-panel" data-panel="tedi" hidden>
@@ -292,6 +307,9 @@
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. TEDI by year</h3><div class="chart-box" id="chartTediAvg"></div></div>
       <div class="chart-card"><h3>TEDI step achieved, by year</h3><div class="chart-box" id="chartTediStep"></div><p class="chart-note">% of homes in that year at each TEDI step.</p></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card wide"><h3>Avg. TEDI % improvement, by year</h3><div class="chart-box" id="chartTediImpAvg"></div><p class="chart-note">% improvement over the CSA F280 reference house (Calc'd TEDI % Imp column).</p></div>
     </div>
   </section>
 
@@ -344,14 +362,24 @@
   var MAX_YEAR = 2026;
   var DEFAULT_YEAR_FROM = 2021;
   var DEFAULT_YEAR_TO = 2026;
-  var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi', 'nla', 'nlr', 'floor_area', 'design_heat_loss', 'design_cool_load'];
+  var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi', 'nla', 'nlr', 'floor_area', 'design_heat_loss', 'design_cool_load', 'tedi_imp', 'meui_imp'];
+  // Steps 3-5's ACH50 airtightness targets (BC Energy Step Code, Part 9).
+  // Step 1 has no airtightness target; Step 2's figure is per RDH's Energy
+  // Step Code guidance, since the BC Building Code table text wasn't
+  // directly confirmable - see the data reference doc for sourcing.
+  var ACH_STEP_THRESHOLDS = [
+    { value: 3.0, label: 'Step 2' },
+    { value: 2.5, label: 'Step 3' },
+    { value: 1.5, label: 'Step 4' },
+    { value: 1.0, label: 'Step 5' }
+  ];
   var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f', '#4a9bb0', '#a65d6b'];
   var SQM_TO_SQFT = 10.7639;
 
   var DATA = null;
   var RAW = [];
   var state = {
-    cities: [], regions: [], houseTypes: [], murb: '', yearMode: 'built',
+    cities: [], regions: [], houseTypes: [], climateZones: [], murb: '', yearMode: 'built',
     yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO
   };
   var currentTab = 'overall';
@@ -374,6 +402,7 @@
     if (p.regions && p.regions.length && p.regions.indexOf(cell.region) === -1) return false;
     if (p.cities && p.cities.length && p.cities.indexOf(cell.city) === -1) return false;
     if (p.houseTypes && p.houseTypes.length && p.houseTypes.indexOf(cell.house_type) === -1) return false;
+    if (p.climateZones && p.climateZones.length && p.climateZones.indexOf(cell.climate_zone) === -1) return false;
     if (p.murb === 'murb' && !cell.is_murb) return false;
     if (p.murb === 'non-murb' && cell.is_murb) return false;
     if (typeof cell.year === 'number') {
@@ -590,7 +619,9 @@
     var rows = yearRows.filter(function (d) { return d[opts.key] != null; });
     if (!rows.length) { emptyState(svg, width, height); return; }
     var x = d3.scaleBand().domain(yearRows.map(function (d) { return String(d.year); })).range([margin.left, width - margin.right]).padding(0.25);
-    var max = d3.max(rows, function (d) { return d[opts.key]; }) || 1;
+    var thresholds = opts.thresholds || [];
+    var maxCandidates = rows.map(function (d) { return d[opts.key]; }).concat(thresholds.map(function (t) { return t.value; }));
+    var max = d3.max(maxCandidates) || 1;
     var y = d3.scaleLinear().domain([0, max * 1.18]).nice().range([height - margin.bottom, margin.top]);
     var g = svg.append('g');
     g.append('g').selectAll('line').data(y.ticks(4)).join('line')
@@ -616,6 +647,19 @@
       line += opts.key === 'count' ? ' homes' : (' avg · ' + fmt0(d.count) + ' homes');
       showTooltip(el, line, event.clientX, event.clientY);
     }).on('mouseleave', hideTooltip);
+
+    if (thresholds.length) {
+      var tg = g.append('g').attr('class', 'thresholds');
+      thresholds.forEach(function (t) {
+        var ty = y(t.value);
+        tg.append('line').attr('x1', margin.left).attr('x2', width - margin.right)
+          .attr('y1', ty).attr('y2', ty)
+          .style('stroke', 'var(--fg-muted)').style('stroke-dasharray', '3,3').style('stroke-width', 1);
+        tg.append('text').attr('x', width - margin.right).attr('y', ty - 3)
+          .attr('text-anchor', 'end').style('font-size', '0.66rem').style('fill', 'var(--fg-muted)')
+          .text(t.label + ' (' + opts.valueFmt(t.value) + ')');
+      });
+    }
   }
 
   function drawStackedBars100(el, breakdown, opts) {
@@ -733,7 +777,7 @@
     var el, trend;
     if (tab === 'airtightness') {
       trend = computeYearTrend();
-      el = document.getElementById('chartAchAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ach', label: 'Avg ACH50', valueFmt: fmt2, unit: 'ACH50' });
+      el = document.getElementById('chartAchAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ach', label: 'Avg ACH50', valueFmt: fmt2, unit: 'ACH50', thresholds: ACH_STEP_THRESHOLDS });
       el = document.getElementById('chartAchStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('ach_step', { order: 'numeric' }), { label: 'Airtightness step', labelFn: stepLabel });
       el = document.getElementById('chartNlaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nla', label: 'Avg NLA', valueFmt: fmt2, unit: 'NLA' });
       el = document.getElementById('chartNlrAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nlr', label: 'Avg NLR', valueFmt: fmt2, unit: 'NLR' });
@@ -741,10 +785,12 @@
       trend = computeYearTrend();
       el = document.getElementById('chartMeuiAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'meui', label: 'Avg MEUI', valueFmt: fmt1, unit: 'kWh/m²/yr' });
       el = document.getElementById('chartMeuiStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('meui_step', { order: 'numeric' }), { label: 'MEUI step', labelFn: stepLabel });
+      el = document.getElementById('chartMeuiImpAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'meui_imp', label: 'Avg MEUI % improvement', valueFmt: fmt1, unit: '%' });
     } else if (tab === 'tedi') {
       trend = computeYearTrend();
       el = document.getElementById('chartTediAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'tedi', label: 'Avg TEDI', valueFmt: fmt1, unit: 'kWh/m²/yr' });
       el = document.getElementById('chartTediStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('tedi_step', { order: 'numeric' }), { label: 'TEDI step', labelFn: stepLabel });
+      el = document.getElementById('chartTediImpAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'tedi_imp', label: 'Avg TEDI % improvement', valueFmt: function (n) { return fmt1(n * 100); }, unit: '%' });
     } else if (tab === 'emissions') {
       trend = computeYearTrend();
       el = document.getElementById('chartGhgAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg', label: 'Avg GHGs', valueFmt: fmt0, unit: 'kg CO2e/yr' });
@@ -826,6 +872,7 @@
   var lastRegionNames = [];
   var lastCityKeys = [];
   var lastHouseTypeKeys = [];
+  var lastClimateZoneKeys = [];
 
   function renderFilterOptions() {
     var regionTotals = {};
@@ -885,6 +932,21 @@
     document.getElementById('houseTypeMselBtn').textContent =
       multiSelectSummary(state.houseTypes, 'All building types', 'building type', 'building types');
 
+    var climateZoneTotals = {};
+    RAW.forEach(function (c) { climateZoneTotals[c.climate_zone] = (climateZoneTotals[c.climate_zone] || 0) + c.count; });
+    lastClimateZoneKeys = Object.keys(climateZoneTotals).sort(function (a, b) { return climateZoneTotals[b] - climateZoneTotals[a]; });
+    state.climateZones = state.climateZones.filter(function (z) { return Object.prototype.hasOwnProperty.call(climateZoneTotals, z); });
+
+    var climateZoneItems = lastClimateZoneKeys.map(function (z) { return { key: z, label: z, count: climateZoneTotals[z] }; });
+    renderCheckboxOptions(document.getElementById('climateZoneMselOptions'), climateZoneItems, new Set(state.climateZones), function (key, checked) {
+      var idx = state.climateZones.indexOf(key);
+      if (checked && idx === -1) state.climateZones.push(key);
+      if (!checked && idx !== -1) state.climateZones.splice(idx, 1);
+      renderAll();
+    });
+    document.getElementById('climateZoneMselBtn').textContent =
+      multiSelectSummary(state.climateZones, 'All climate zones', 'climate zone', 'climate zones');
+
     document.getElementById('murbFilter').value = state.murb;
     document.getElementById('yearModeFilter').value = state.yearMode;
     document.getElementById('yearFromLabel').textContent = state.yearMode === 'entry' ? 'Entry year from' : 'Year built from';
@@ -935,6 +997,11 @@
     if (action === 'all') { state.houseTypes = lastHouseTypeKeys.slice(); renderAll(); }
     else if (action === 'none') { state.houseTypes = []; renderAll(); }
   });
+  document.getElementById('climateZoneMselPanel').addEventListener('click', function (event) {
+    var action = event.target.getAttribute('data-action');
+    if (action === 'all') { state.climateZones = lastClimateZoneKeys.slice(); renderAll(); }
+    else if (action === 'none') { state.climateZones = []; renderAll(); }
+  });
 
   function renderAll() {
     renderFilterOptions();
@@ -972,7 +1039,7 @@
     var years = (DATA && DATA.year_modes.built.years || []).filter(function (y) { return typeof y === 'number'; });
     MIN_YEAR = years.length ? Math.min.apply(null, years) : 2014;
     MAX_YEAR = years.length ? Math.max.apply(null, years) : 2026;
-    setState({ cities: [], regions: [], houseTypes: [], murb: '', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
+    setState({ cities: [], regions: [], houseTypes: [], climateZones: [], murb: '', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
   });
 
   document.getElementById('tabNav').addEventListener('click', function (event) {
