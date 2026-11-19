@@ -356,6 +356,7 @@ CITY_TO_REGION = {
     'Fauquier': CENTRAL_KOOTENAY,
     'Skidegate': SKEENA_QUEEN_CHARLOTTE,
     'Tie Lake /rdek': EAST_KOOTENAY,
+    'Tie Lake': EAST_KOOTENAY,
     'New Wesminster': METRO_VANCOUVER,
     'Vancpuver': METRO_VANCOUVER,
     'Courtenaty': COMOX_VALLEY,

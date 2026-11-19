@@ -14,6 +14,7 @@ workbook into memory.
 """
 import datetime
 import json
+import re
 import sys
 import zipfile
 from collections import defaultdict
@@ -111,7 +112,18 @@ def normalize_city(raw):
         'W. Vancouver': 'West Vancouver',
     }
     fixed = aliases.get(fixed, fixed)
-    return CITY_SPELLING_FIXES.get(fixed, fixed)
+    fixed = CITY_SPELLING_FIXES.get(fixed, fixed)
+    # Drop a trailing "/RDEK" or " RDEK" marker (Regional District of East
+    # Kootenay) - the region is already computed separately from the city
+    # name via CITY_TO_REGION, so repeating it in the municipality field is
+    # redundant.
+    fixed = RDEK_SUFFIX_RE.sub('', fixed).strip()
+    return fixed if fixed else 'Unknown'
+
+
+# Matches a trailing "/rdek" or " rdek" (with any amount of surrounding
+# whitespace around the slash) at the end of a city name, case-insensitively.
+RDEK_SUFFIX_RE = re.compile(r'(?:\s*/\s*|\s+)rdek\s*$', re.IGNORECASE)
 
 
 # Misspellings/typos of a real municipality, found by fuzzy-matching every
@@ -121,6 +133,14 @@ def normalize_city(raw):
 # real places (e.g. Invermere/Windermere, the "N Mile House" series,
 # Koocanusa's distinct sub-localities).
 CITY_SPELLING_FIXES = {
+    # RDEK (Regional District of East Kootenay) appears as a prefix, or
+    # fused with another word, in a handful of entries, rather than as the
+    # plain trailing "/RDEK" or " RDEK" that RDEK_SUFFIX_RE strips - map
+    # these straight to the real place name.
+    'Rdek/wardner': 'Wardner',
+    'Rdek Wasa': 'Wasa',
+    'Cbk/rdek': 'Cranbrook',
+    'Ft Steele Rdek': 'Fort Steele',
     # North Saanich (6 misspelled variants, per user report)
     'North Saaanich': 'North Saanich',
     'North Sasanich': 'North Saanich',
@@ -312,7 +332,6 @@ def main():
     # Map sheet name -> worksheet XML part.
     wb_xml = z.read('xl/workbook.xml').decode('utf-8', 'ignore')
     rels_xml = z.read('xl/_rels/workbook.xml.rels').decode('utf-8', 'ignore')
-    import re
     sheets = re.findall(r'<sheet[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"', wb_xml)
     relmap = dict(re.findall(r'<Relationship Id="([^"]+)"[^>]*Target="([^"]+)"', rels_xml))
     sheet_rid = next(rid for name, rid in sheets if name == SHEET_NAME)
