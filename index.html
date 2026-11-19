@@ -656,7 +656,7 @@
     // one, and measure each so they can be decluttered vertically below.
     if (thresholds.length) {
       thresholds.forEach(function (t) {
-        t._text = t.label + ' (' + opts.valueFmt(t.value) + ')';
+        t._text = t.label;
         var probe = svg.append('text').style('font-size', '0.66rem').style('visibility', 'hidden').text(t._text);
         t._width = probe.node().getComputedTextLength ? probe.node().getComputedTextLength() : t._text.length * 5.5;
         probe.remove();
@@ -863,7 +863,7 @@
       trend = computeYearTrend();
       el = document.getElementById('chartEntryCount'); if (el) drawAvgByYearBars(el, trend, { key: 'count', label: 'Entries', valueFmt: fmt0 });
       el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
-      el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10 }), { label: 'Limiting parameter' });
+      el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10, topStack: ['Airtightness', 'MEUI', 'TEDI', 'Multiple limiting parameters'] }), { label: 'Limiting parameter' });
       el = document.getElementById('chartFloorAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'floor_area', label: 'Avg heated floor area', valueFmt: function (n) { return fmt0(n * SQM_TO_SQFT); }, unit: 'ft²' });
       el = document.getElementById('chartDesignHeatLossAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_heat_loss', label: 'Avg design heat loss', valueFmt: fmt0, unit: 'W' });
       el = document.getElementById('chartDesignCoolLoadAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_cool_load', label: 'Avg design cooling load', valueFmt: fmt0, unit: 'W' });
