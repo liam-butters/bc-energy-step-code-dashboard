@@ -90,6 +90,10 @@ HOUSE_TYPE_FIELD = 'TYPEOFHOUSE'
 MURB_FIELD = 'UNITSMURBS'
 # Climate zone (4, 5, 6, 7.1, 7.2) is also a cube dimension, same reasoning.
 CLIMATE_ZONE_FIELD = 'Climate Zone'
+# Overall Step Achieved ('0'/'3'/'4'/'5' in this data) is also a cube
+# dimension, so filtering by it can include/exclude homes from every
+# aggregate, not just its own category breakdown chart.
+STEP_ACHIEVED_FIELD = 'Step Achieved'
 
 MIN_PLAUSIBLE_YEAR = 1990
 MAX_PLAUSIBLE_YEAR = datetime.date.today().year + 1
@@ -314,6 +318,12 @@ def normalize_climate_zone(raw):
     return 'Zone ' + label
 
 
+def normalize_step_achieved(raw):
+    if raw is None or raw == '':
+        return 'Unknown'
+    return raw.strip() if isinstance(raw, str) else str(raw)
+
+
 # For the "limiting parameter" breakdown: whichever of airtightness/MEUI/TEDI
 # step-achieved is lowest is the one holding the home back from a higher
 # overall step. Ties (two or more fields sharing the lowest value) are
@@ -424,6 +434,7 @@ def main():
     house_type_counts = defaultdict(int)
     murb_counts = defaultdict(int)
     climate_zone_counts = defaultdict(int)
+    step_achieved_counts = defaultdict(int)
     excluded_unmapped = defaultdict(int)
     # key -> lowercased value -> {original casing: count}, so values that only
     # differ by case (e.g. "Natural gas" vs "Natural Gas") can be merged into
@@ -493,6 +504,7 @@ def main():
             house_type = normalize_house_type(rowvals.get(HOUSE_TYPE_FIELD))
             murb = is_murb(rowvals.get(MURB_FIELD))
             climate_zone = normalize_climate_zone(rowvals.get(CLIMATE_ZONE_FIELD))
+            step_achieved = normalize_step_achieved(rowvals.get(STEP_ACHIEVED_FIELD))
 
             if region == UNMAPPED_LABEL:
                 excluded_unmapped[city] += 1
@@ -504,15 +516,17 @@ def main():
             house_type_counts[house_type] += 1
             murb_counts['MURB' if murb else 'Non-MURB'] += 1
             climate_zone_counts[climate_zone] += 1
+            step_achieved_counts[step_achieved] += 1
 
             for mode in YEAR_MODES:
                 year_key = year_keys[mode]
                 year_counts[mode][year_key] += 1
-                cell = cubes[mode][(city, year_key, house_type, murb, climate_zone)]
+                cell = cubes[mode][(city, year_key, house_type, murb, climate_zone, step_achieved)]
                 cell['region'] = region
                 cell['house_type'] = house_type
                 cell['is_murb'] = murb
                 cell['climate_zone'] = climate_zone
+                cell['step_achieved'] = step_achieved
                 apply_row(cell, rowvals)
 
             if total_rows % 20000 == 0:
@@ -544,7 +558,7 @@ def main():
     year_modes_out = {}
     for mode in YEAR_MODES:
         cells_out = []
-        for (city, year_key, house_type, murb, climate_zone), cell in cubes[mode].items():
+        for (city, year_key, house_type, murb, climate_zone, step_achieved), cell in cubes[mode].items():
             cells_out.append({
                 'city': city,
                 'region': cell['region'],
@@ -552,6 +566,7 @@ def main():
                 'house_type': house_type,
                 'is_murb': cell['is_murb'],
                 'climate_zone': cell['climate_zone'],
+                'step_achieved': cell['step_achieved'],
                 'count': cell['count'],
                 'num': {k: v for k, v in cell['num'].items()},
                 'cat': {k: dict(v) for k, v in cell['cat'].items()},
@@ -574,6 +589,7 @@ def main():
         'murb_counts': murb_counts,
         'climate_zones': sorted(climate_zone_counts, key=lambda z: -climate_zone_counts[z]),
         'climate_zone_counts': climate_zone_counts,
+        'step_achieved_counts': step_achieved_counts,
         'year_mode_default': 'built',
         'year_modes': year_modes_out,
     }

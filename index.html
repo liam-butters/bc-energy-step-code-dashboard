@@ -239,6 +239,18 @@
         </div>
       </div>
     </label>
+    <label>Overall step achieved
+      <div class="msel" id="stepAchievedMsel">
+        <button type="button" class="msel-btn" id="stepAchievedMselBtn" aria-haspopup="listbox">All steps</button>
+        <div class="msel-panel" id="stepAchievedMselPanel" hidden>
+          <div class="msel-actions">
+            <button type="button" data-action="all">Select all</button>
+            <button type="button" data-action="none">Clear</button>
+          </div>
+          <div class="msel-options" id="stepAchievedMselOptions"></div>
+        </div>
+      </div>
+    </label>
     <label>MURB
       <select id="murbFilter" aria-label="MURB filter">
         <option value="">All homes</option>
@@ -393,7 +405,7 @@
   var DATA = null;
   var RAW = [];
   var state = {
-    cities: [], regions: [], houseTypes: [], climateZones: [], murb: '', yearMode: 'built',
+    cities: [], regions: [], houseTypes: [], climateZones: [], stepAchieved: [], murb: '', yearMode: 'built',
     yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO
   };
   var currentTab = 'overall';
@@ -422,6 +434,7 @@
     if (p.cities && p.cities.length && p.cities.indexOf(cell.city) === -1) return false;
     if (p.houseTypes && p.houseTypes.length && p.houseTypes.indexOf(cell.house_type) === -1) return false;
     if (p.climateZones && p.climateZones.length && p.climateZones.indexOf(cell.climate_zone) === -1) return false;
+    if (p.stepAchieved && p.stepAchieved.length && p.stepAchieved.indexOf(cell.step_achieved) === -1) return false;
     if (p.murb === 'murb' && !cell.is_murb) return false;
     if (p.murb === 'non-murb' && cell.is_murb) return false;
     if (typeof cell.year === 'number') {
@@ -637,8 +650,20 @@
     var svg = ensureSvg(el, width, height, opts.label);
     var rows = yearRows.filter(function (d) { return d[opts.key] != null; });
     if (!rows.length) { emptyState(svg, width, height); return; }
-    var x = d3.scaleBand().domain(yearRows.map(function (d) { return String(d.year); })).range([margin.left, width - margin.right]).padding(0.25);
     var thresholds = opts.thresholds || [];
+    // Reserve room on the right for the threshold labels, so they sit in
+    // their own strip clear of the bars instead of overlapping the last
+    // one, and measure each so they can be decluttered vertically below.
+    if (thresholds.length) {
+      thresholds.forEach(function (t) {
+        t._text = t.label + ' (' + opts.valueFmt(t.value) + ')';
+        var probe = svg.append('text').style('font-size', '0.66rem').style('visibility', 'hidden').text(t._text);
+        t._width = probe.node().getComputedTextLength ? probe.node().getComputedTextLength() : t._text.length * 5.5;
+        probe.remove();
+      });
+      margin.right = Math.max(margin.right, d3.max(thresholds, function (t) { return t._width; }) + 10);
+    }
+    var x = d3.scaleBand().domain(yearRows.map(function (d) { return String(d.year); })).range([margin.left, width - margin.right]).padding(0.25);
     var valCandidates = rows.map(function (d) { return d[opts.key]; }).concat(thresholds.map(function (t) { return t.value; }));
     var max = d3.max(valCandidates) || 1;
     var min = Math.min(0, d3.min(valCandidates));
@@ -673,14 +698,22 @@
 
     if (thresholds.length) {
       var tg = g.append('g').attr('class', 'thresholds');
-      thresholds.forEach(function (t) {
+      // Lines sit at their true value; labels, in the reserved right-hand
+      // strip, are nudged apart vertically if two are closer than a line
+      // of text would allow, so they never overlap each other.
+      var sorted = thresholds.slice().sort(function (a, b) { return b.value - a.value; });
+      var minGap = 11;
+      var lastLabelY = -Infinity;
+      sorted.forEach(function (t) {
         var ty = y(t.value);
         tg.append('line').attr('x1', margin.left).attr('x2', width - margin.right)
           .attr('y1', ty).attr('y2', ty)
           .style('stroke', 'var(--fg-muted)').style('stroke-dasharray', '3,3').style('stroke-width', 1);
-        tg.append('text').attr('x', width - margin.right).attr('y', ty - 3)
+        var labelY = Math.max(ty, lastLabelY + minGap);
+        lastLabelY = labelY;
+        tg.append('text').attr('x', width).attr('y', labelY - 3)
           .attr('text-anchor', 'end').style('font-size', '0.66rem').style('fill', 'var(--fg-muted)')
-          .text(t.label + ' (' + opts.valueFmt(t.value) + ')');
+          .text(t._text);
       });
     }
   }
@@ -897,6 +930,7 @@
   var lastCityKeys = [];
   var lastHouseTypeKeys = [];
   var lastClimateZoneKeys = [];
+  var lastStepAchievedKeys = [];
 
   function renderFilterOptions() {
     var regionTotals = {};
@@ -971,6 +1005,25 @@
     document.getElementById('climateZoneMselBtn').textContent =
       multiSelectSummary(state.climateZones, 'All climate zones', 'climate zone', 'climate zones');
 
+    var stepAchievedTotals = {};
+    RAW.forEach(function (c) { stepAchievedTotals[c.step_achieved] = (stepAchievedTotals[c.step_achieved] || 0) + c.count; });
+    lastStepAchievedKeys = Object.keys(stepAchievedTotals).sort(function (a, b) {
+      var na = parseFloat(a), nb = parseFloat(b);
+      if (isNaN(na)) return 1; if (isNaN(nb)) return -1;
+      return na - nb;
+    });
+    state.stepAchieved = state.stepAchieved.filter(function (s) { return Object.prototype.hasOwnProperty.call(stepAchievedTotals, s); });
+
+    var stepAchievedItems = lastStepAchievedKeys.map(function (s) { return { key: s, label: s === 'Unknown' ? 'Unknown' : stepLabel(s), count: stepAchievedTotals[s] }; });
+    renderCheckboxOptions(document.getElementById('stepAchievedMselOptions'), stepAchievedItems, new Set(state.stepAchieved), function (key, checked) {
+      var idx = state.stepAchieved.indexOf(key);
+      if (checked && idx === -1) state.stepAchieved.push(key);
+      if (!checked && idx !== -1) state.stepAchieved.splice(idx, 1);
+      renderAll();
+    });
+    document.getElementById('stepAchievedMselBtn').textContent =
+      multiSelectSummary(state.stepAchieved, 'All steps', 'step', 'steps');
+
     document.getElementById('murbFilter').value = state.murb;
     document.getElementById('yearModeFilter').value = state.yearMode;
     document.getElementById('yearFromLabel').textContent = state.yearMode === 'entry' ? 'Entry year from' : 'Year built from';
@@ -1026,6 +1079,11 @@
     if (action === 'all') { state.climateZones = lastClimateZoneKeys.slice(); renderAll(); }
     else if (action === 'none') { state.climateZones = []; renderAll(); }
   });
+  document.getElementById('stepAchievedMselPanel').addEventListener('click', function (event) {
+    var action = event.target.getAttribute('data-action');
+    if (action === 'all') { state.stepAchieved = lastStepAchievedKeys.slice(); renderAll(); }
+    else if (action === 'none') { state.stepAchieved = []; renderAll(); }
+  });
 
   function renderAll() {
     renderFilterOptions();
@@ -1063,7 +1121,7 @@
     var years = (DATA && DATA.year_modes.built.years || []).filter(function (y) { return typeof y === 'number'; });
     MIN_YEAR = years.length ? Math.min.apply(null, years) : 2014;
     MAX_YEAR = years.length ? Math.max.apply(null, years) : 2026;
-    setState({ cities: [], regions: [], houseTypes: [], climateZones: [], murb: '', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
+    setState({ cities: [], regions: [], houseTypes: [], climateZones: [], stepAchieved: [], murb: '', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
   });
 
   document.getElementById('tabNav').addEventListener('click', function (event) {
