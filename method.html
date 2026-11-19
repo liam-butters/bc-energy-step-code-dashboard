@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Column Reference — BC Energy Step Code Dashboard</title>
+<meta name="description" content="How the BC Energy Step Code Dashboard's charts and filters map to the source workbook's columns, and how the workbook's own query calculates its derived fields.">
+<style>
+  :root {
+    --bg: #fbfbfa;
+    --panel: #ffffff;
+    --fg: #1b1f23;
+    --fg-muted: #6b7280;
+    --border: #e3e3e6;
+    --accent: #2f7d6b;
+    --accent-soft: rgba(47, 125, 107, 0.12);
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --panel: #1b1e23;
+      --fg: #e8e9eb;
+      --fg-muted: #9aa1ab;
+      --border: #2b2f36;
+      --accent: #52b095;
+      --accent-soft: rgba(82, 176, 149, 0.16);
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 20px max(16px, env(safe-area-inset-right)) 60px max(16px, env(safe-area-inset-left));
+    max-width: 880px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+  a { color: var(--accent); }
+  .back-link { display: inline-block; margin-bottom: 14px; font-size: 0.86rem; color: var(--fg-muted); text-decoration: none; }
+  .back-link:hover { color: var(--accent); }
+  h1 { font-size: 1.6rem; font-weight: 650; margin: 0 0 6px 0; letter-spacing: -0.01em; }
+  .byline { color: var(--fg-muted); font-size: 0.86rem; margin: 0 0 22px 0; }
+  .byline a { color: inherit; text-decoration: underline; }
+  h2 { font-size: 1.2rem; font-weight: 650; margin: 36px 0 10px 0; padding-top: 10px; border-top: 1px solid var(--border); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { font-size: 1rem; font-weight: 650; margin: 22px 0 8px 0; color: var(--fg); }
+  p { margin: 0 0 14px 0; }
+  code { background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 1px 5px; font-size: 0.88em; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 14px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 0.86rem; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  th { color: var(--fg-muted); font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.02em; background: var(--accent-soft); }
+  td:first-child, th:first-child { white-space: nowrap; }
+
+  .note { font-size: 0.84rem; color: var(--fg-muted); margin: -4px 0 20px 0; }
+  .note b { color: var(--fg); }
+
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 0.78rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+  <a class="back-link" href="index.html">&larr; Back to dashboard</a>
+
+  <header>
+    <h1>BC Energy Step Code Dashboard — Data Column Reference</h1>
+    <p class="byline">As of November 19, 2026 &middot; Liam Butters</p>
+  </header>
+
+  <p>Each table below lists a dashboard chart or filter next to the exact workbook column(s) behind it (source file: <code>NRCan Database Analysis.xlsx</code>, "Conditioned Data" tab, via <code>extract_data.py</code>). "Avg." charts show the mean of the column across homes matching the current filters, excluding blank cells (and, for a few columns noted below, a <code>0</code> sentinel the workbook uses for "not computed"). 2026 is labelled "H1 2026" on every chart axis/tooltip, since the extraction only covers the first half of the year so far.</p>
+
+  <h2>Filters</h2>
+  <table>
+    <tr><th>Filter</th><th>Column(s)</th></tr>
+    <tr><td>Regional district</td><td>Derived from <code>CLIENTCITY</code> via a city&rarr;region lookup table (<code>regions.py</code>), not a workbook column</td></tr>
+    <tr><td>Municipality</td><td><code>CLIENTCITY</code></td></tr>
+    <tr><td>Building type</td><td><code>TYPEOFHOUSE</code></td></tr>
+    <tr><td>Climate zone</td><td><code>Climate Zone</code></td></tr>
+    <tr><td>Overall step achieved</td><td><code>Step Achieved</code></td></tr>
+    <tr><td>MURB</td><td><code>UNITSMURBS</code> (0 = non-MURB, any other number = MURB)</td></tr>
+    <tr><td>Assign year by</td><td><code>YEARBUILT</code> (default) or <code>ENTRYDATE</code> - every chart is pre-aggregated both ways, and this filter just picks which aggregation to read from</td></tr>
+  </table>
+
+  <h2>Overall tab</h2>
+  <table>
+    <tr><th>Chart</th><th>Column(s)</th></tr>
+    <tr><td>Entries by year</td><td>Row count only (no data column)</td></tr>
+    <tr><td>Overall Step Code achieved, by year</td><td><code>Step Achieved</code></td></tr>
+    <tr><td>Limiting parameter, by year</td><td>Derived: whichever of <code>ACH Step Achieved</code>, <code>MEUI Step Achieved</code>, <code>TEDI Step Achieved</code> is lowest; 2+ tied is grouped as "Multiple limiting parameters"</td></tr>
+    <tr><td>Avg. heated floor area, by year (ft&sup2;)</td><td><code>HEATEDFLOORAREA</code> (stored in m&sup2;, &times;10.7639 for display)</td></tr>
+    <tr><td>Avg. design heat loss, by year</td><td><code>EGHDESHTLOSS</code></td></tr>
+    <tr><td>Avg. design cooling load (heat gain), by year</td><td><code>ERSDesCoolLoss</code> (0 treated as missing - see Airtightness tab note on <code>Calc'd NLR</code> for why)</td></tr>
+  </table>
+  <p class="note">The heat loss/cooling load charts carry an on-page disclaimer that these are HOT2000-calculated values, not CSA F280-compliant.</p>
+
+  <h2>Airtightness tab</h2>
+  <table>
+    <tr><th>Chart</th><th>Column(s)</th></tr>
+    <tr><td>Avg. airtightness KPI</td><td><code>Rounded ACH</code></td></tr>
+    <tr><td>Airtightness step achieved, by year</td><td><code>ACH Step Achieved</code></td></tr>
+    <tr><td>Avg. ACH50 by year</td><td><code>Rounded ACH</code>, plus dashed Step Code threshold lines (below)</td></tr>
+    <tr><td>Avg. NLA by year</td><td><code>NLA</code></td></tr>
+    <tr><td>Avg. NLR by year</td><td><code>Calc'd NLR</code> - switched from the raw <code>NLR</code> column, which uses <code>0</code> as a "not computed" sentinel for ~74% of rows (same issue already fixed for TEDI/MEUI); <code>Calc'd NLR</code> is populated for 99.6% of rows with no sentinel-zero pattern</td></tr>
+  </table>
+  <p class="note"><b>ACH50 threshold lines</b>: 2.5 (Step 3), 1.5 (Step 4), 1.0 (Step 5), per BC Energy Step Code Part 9 airtightness targets. Step 1 has no airtightness target; Step 2's figure couldn't be confirmed against the official BC Building Code table, so no line is drawn for it.</p>
+
+  <h2>MEUI tab</h2>
+  <table>
+    <tr><th>Chart</th><th>Column(s)</th></tr>
+    <tr><td>Avg. MEUI KPI</td><td><code>Calculated MEUI</code></td></tr>
+    <tr><td>Avg. MEUI by year</td><td><code>Calculated MEUI</code></td></tr>
+    <tr><td>MEUI step achieved, by year</td><td><code>MEUI Step Achieved</code></td></tr>
+    <tr><td>Avg. MEUI % improvement, by year</td><td><code>Calculated MEUI % Improvement</code> - already stored as a percentage (e.g. <code>51.2</code> = 51.2%), used as-is</td></tr>
+  </table>
+
+  <h2>TEDI tab</h2>
+  <table>
+    <tr><th>Chart</th><th>Column(s)</th></tr>
+    <tr><td>Avg. TEDI KPI</td><td><code>Calc'd TEDI</code></td></tr>
+    <tr><td>Avg. TEDI by year</td><td><code>Calc'd TEDI</code></td></tr>
+    <tr><td>TEDI step achieved, by year</td><td><code>TEDI Step Achieved</code></td></tr>
+    <tr><td>Avg. TEDI % improvement, by year</td><td><code>Calc'd TEDI % Imp</code> - stored as a 0-1 fraction (e.g. <code>0.09</code> = 9%), &times;100 for display</td></tr>
+  </table>
+  <p class="note">Note: the per-step target columns (<code>TEDI % Imp Step 3/4/5</code>) are thresholds, not achieved values, so they aren't charted here.</p>
+
+  <h2>Emissions tab</h2>
+  <table>
+    <tr><th>Chart</th><th>Column(s)</th></tr>
+    <tr><td>Avg. GHGs KPI</td><td><code>GHGs</code></td></tr>
+    <tr><td>Avg. GHGs by year</td><td><code>GHGs</code></td></tr>
+    <tr><td>Emissions Level achieved, by year</td><td><code>EL Achieved</code> (EL = Emissions Level, not Energy Limit)</td></tr>
+    <tr><td>Fossil fuel burning system, by year</td><td>Derived: "Fossil fuel present" if <code>FURNACEFUEL</code>, <code>PDHWFUEL</code>, <code>SUPPHTGFUEL1</code> or <code>SUPPHTGFUEL2</code> is Natural Gas, Propane or Oil. Wood-burning fireplaces/stoves don't count.</td></tr>
+  </table>
+
+  <h2>Heating &amp; cooling tab</h2>
+  <table>
+    <tr><th>Chart</th><th>Column(s)</th></tr>
+    <tr><td>Homes with a heat pump (gauge + adoption by year)</td><td><code>Has heat pump?</code></td></tr>
+    <tr><td>Homes with cooling (gauge + adoption by year)</td><td><code>has cooling?</code></td></tr>
+    <tr><td>Primary heating system, by year</td><td><code>Primary Heating System</code></td></tr>
+    <tr><td>Primary heating fuel, by year</td><td><code>Primary Space Heating Fuel</code></td></tr>
+  </table>
+  <p class="note">Both gauges show "(built/entered since &lt;year filter start&gt;)" so it's clear the % only covers the currently filtered year range. Extracted but not currently charted anywhere: <code>AIRCONDTYPE</code> (cooling equipment type), <code>PDHWTYPE</code> (water heater type) and <code>BUILDINGTYPE</code>. They're available in the data if charts for them are wanted later.</p>
+
+  <h2>Water heating tab</h2>
+  <table>
+    <tr><th>Chart</th><th>Column(s)</th></tr>
+    <tr><td>Water heating fuel, by year</td><td><code>PDHWFUEL</code></td></tr>
+  </table>
+
+  <h2>Calculated columns</h2>
+  <p>The "Conditioned Data" tab isn't raw data - it's the output of a Power Query (M code) embedded in the workbook itself, which adds every calculated column below on top of the raw HOT2000/EnerGuide export. This traces each one back to the columns it's built from, read directly from that query (<code>customXml/item1.xml</code> in the .xlsx &rarr; the embedded <code>DataMashup</code> package &rarr; <code>Formulas/Section1.m</code>).</p>
+
+  <h3>GHGs and Emissions Level</h3>
+  <table>
+    <tr><th>Column</th><th>Built from</th><th>How</th></tr>
+    <tr><td><code>GHGs</code></td><td><code>EGHFCONELEC</code>, <code>EGHFCONNGAS</code>, <code>EGHFCONPROP</code>, <code>EGHFCONOIL</code> + fuel emission-factor lookup queries (<code>elecGHGs</code>, <code>CH4GHGs</code>, <code>PropaneGHGs</code>, <code>OilGHGs</code>)</td><td>Sums each fuel's consumption &times; its emission factor</td></tr>
+    <tr><td><code>EL Based on Total GHGs</code></td><td><code>GHGs</code></td><td>Bucketed: &le;265&rarr;EL-4, &le;440&rarr;EL-3, &le;1050&rarr;EL-2, else EL-1</td></tr>
+    <tr><td><code>EL Based on GHGs per Unit Area</code></td><td><code>GHGs</code>, <code>HEATEDFLOORAREA</code></td><td>Bucketed on GHGs/floor area together with a GHGs cap per level</td></tr>
+    <tr><td><code>EL Achieved</code></td><td>the two EL columns above</td><td>The higher (better) of the two</td></tr>
+  </table>
+
+  <h3>Airtightness</h3>
+  <table>
+    <tr><th>Column</th><th>Built from</th><th>How</th></tr>
+    <tr><td><code>Calc'd NLR</code></td><td><code>AIR50P</code>, <code>HSEVOL</code>, <code>LEAKAR</code>, <code>NLA</code></td><td><code>(AIR50P &times; HSEVOL &divide; 3.6) &divide; (LEAKAR &divide; NLA)</code>, rounded</td></tr>
+    <tr><td><code>ACH Step Achieved</code></td><td><code>AIR50P</code> (raw ACH50), <code>Calc'd NLR</code>, <code>NLA</code>, <code>TYPEOFHOUSE</code>, <code>BUILDINGTYPE</code></td><td>Whichever of ACH50/NLR/NLA is best determines the step (&le;1/0.35/0.48&rarr;5, &le;1.5/0.53/0.72&rarr;4, &le;2.5/0.89/1.2 (or &le;3.0 for non-single-detached houses)&rarr;3, else Fail)</td></tr>
+  </table>
+
+  <h3>TEDI</h3>
+  <table>
+    <tr><th>Column</th><th>Built from</th><th>How</th></tr>
+    <tr><td><code>TEDI Step 3/4/5 Max</code> (thresholds)</td><td><code>Climate Zone</code>, <code>HDDs</code>, <code>HEATEDFLOORAREA</code></td><td>A target TEDI ceiling per step, interpolated from HDDs within each climate zone's range, with a small floor-area adjustment</td></tr>
+    <tr><td><code>TEDI % Imp Step 3/4/5</code> (thresholds)</td><td><code>HSEVOL</code></td><td>20/40/70% if &ge;300 m&sup3;, else 10/30/60%</td></tr>
+    <tr><td><code>Calc'd TEDI</code></td><td><code>AUXENERGY</code>, <code>HEATEDFLOORAREA</code></td><td><code>(AUXENERGY &divide; 1000 &divide; HEATEDFLOORAREA) &times; 277.78</code>; null if AUXENERGY is 0</td></tr>
+    <tr><td><code>Calc'd TEDI % Imp</code></td><td>Reference-house heat losses (<code>RefHLAir/Ceiling/Walls/ExposedFlr/Window/Door</code>) vs. this house's (<code>EGHHLAIR/FOUND/CEILING/WALLS/EXPOSEDFLR</code>, <code>ERSHLWINDOW</code>, <code>ERSHLDOOR</code>)</td><td>% reduction in total heat loss vs. the reference house; null if any reference value is 0</td></tr>
+    <tr><td><code>TEDI Step Achieved</code></td><td><code>Calc'd TEDI</code>, <code>Calc'd TEDI % Imp</code>, the TEDI Step Max/% Imp thresholds above</td><td>Best step where either the absolute TEDI or the % improvement clears that step's bar</td></tr>
+  </table>
+
+  <h3>MEUI</h3>
+  <table>
+    <tr><th>Column</th><th>Built from</th><th>How</th></tr>
+    <tr><td><code>Calculated MEUI</code></td><td><code>EGHFCONTOTAL</code>, <code>BUILDINGTYPE</code>, <code>NUMDWELLINGUNITS</code>, <code>COMMONSPACEELECCONS</code>, <code>HEATEDFLOORAREA</code></td><td>Total energy consumption minus a fixed baseload (house) or a per-unit + common-space baseload (MURB), normalized to floor area</td></tr>
+    <tr><td><code>Step 3/4/5 Min MEUI %</code> (thresholds)</td><td><code>FLOORAREA</code></td><td>20/40/70% if &le;300 m&sup2;, else 10/30/60%</td></tr>
+    <tr><td><code>MEUI Step Achieved</code></td><td><code>Calculated MEUI</code> vs. the workbook's Step 3/4/5 Max MEUI reference values</td><td>Best step whose MEUI ceiling isn't exceeded (these ceiling values themselves come from a reference table the query joins in, not shown in the formulas captured here)</td></tr>
+    <tr><td><code>Calculated MEUI % Improvement</code></td><td><code>OVERALLIMPROVEMENT</code> if present, else <code>ERSREFHOUSERATING</code>, <code>EGHFCONTOTAL</code>, <code>BUILDINGTYPE</code></td><td>% reduction vs. a reference-house energy target</td></tr>
+    <tr><td><code>MEUI % Improvement Step Achieved</code></td><td><code>Calculated MEUI % Improvement</code> vs. the Min MEUI % thresholds</td><td>Best step whose % improvement bar is cleared</td></tr>
+    <tr><td><code>Overall MEUI Achieved</code></td><td><code>MEUI Step Achieved</code>, <code>MEUI % Improvement Step Achieved</code></td><td>The higher of the two (0 if both are 0)</td></tr>
+  </table>
+
+  <h3>Overall step</h3>
+  <table>
+    <tr><th>Column</th><th>Built from</th><th>How</th></tr>
+    <tr><td><code>Step Achieved</code></td><td><code>ACH Step Achieved</code>, <code>TEDI Step Achieved</code>, <code>Overall MEUI Achieved</code></td><td>The lowest of the three (0/Fail if any one of them is 0) - this is the same "weakest link" logic the dashboard's own Limiting Parameter chart uses independently</td></tr>
+  </table>
+  <p class="note"><code>Climate Zone</code> itself is also calculated, not raw: it's bucketed from <code>HDDs</code> (heating degree days), which the query joins in from a separate weather-station lookup keyed by location - it isn't one of the workbook's own HOT2000 export columns.</p>
+
+  <footer>
+    Part of the <a href="index.html">BC Energy Step Code Dashboard</a>. Source and refresh pipeline: <a href="https://github.com/liam-butters/bc-energy-step-code-dashboard">this repository</a>.
+  </footer>
+
+</body>
+</html>
