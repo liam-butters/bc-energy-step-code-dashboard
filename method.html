@@ -93,7 +93,7 @@
     <tr><td>Limiting parameter, by year</td><td>Derived: whichever of <code>Airtightness Step</code>, <code>MEUI Step Achieved</code>, <code>TEDI Step Achieved</code> is lowest; 2+ tied is grouped as "Multiple limiting parameters" (matches the workbook's own <code>Step Achieved</code> formula, which combines the same three columns)</td></tr>
     <tr><td>Avg. heated floor area, by year (ft&sup2;)</td><td><code>HEATEDFLOORAREA</code> (stored in m&sup2;, &times;10.7639 for display)</td></tr>
     <tr><td>Avg. design heat loss, by year</td><td><code>EGHDESHTLOSS</code></td></tr>
-    <tr><td>Avg. design cooling load (heat gain), by year</td><td><code>ERSDesCoolLoss</code> (0 treated as missing - see Airtightness tab note on <code>Calc'd NLR</code> for why)</td></tr>
+    <tr><td>Avg. design cooling load (heat gain), by year</td><td><code>ERSDesCoolLoss</code> (0 treated as missing - the workbook uses it as a "not computed" sentinel)</td></tr>
   </table>
   <p class="note">The heat loss/cooling load charts carry an on-page disclaimer that these are HOT2000-calculated values, not CSA F280-compliant.</p>
 
@@ -104,10 +104,11 @@
     <tr><td>Airtightness step achieved, by year</td><td><code>Airtightness Step</code> - the workbook's combined airtightness compliance column (whichever of the ACH50, NLR, or NLA path gives the highest step; "FAIL" if none pass, shown as Fail)</td></tr>
     <tr><td>Avg. ACH50 by year</td><td><code>Rounded ACH</code>, plus dashed Step Code threshold lines (below)</td></tr>
     <tr><td>Avg. NLA by year</td><td><code>NLA</code>, plus dashed Step Code threshold lines (below)</td></tr>
-    <tr><td>Avg. NLR by year</td><td><code>Calc'd NLR</code> - switched from the raw <code>NLR</code> column, which uses <code>0</code> as a "not computed" sentinel for ~74% of rows (same issue already fixed for TEDI/MEUI); <code>Calc'd NLR</code> is populated for 99.6% of rows with no sentinel-zero pattern - plus dashed Step Code threshold lines (below)</td></tr>
+    <tr><td>Avg. NLR by year</td><td><code>Calc'd NLR</code>, plus dashed Step Code threshold lines (below)</td></tr>
   </table>
   <p class="note"><b>ACH50 threshold lines</b>: 2.5 (Step 3), 1.5 (Step 4), 1.0 (Step 5), per BC Energy Step Code Part 9 airtightness targets. Step 1 has no airtightness target; Step 2's figure couldn't be confirmed against the official BC Building Code table, so no line is drawn for it.</p>
-  <p class="note"><b>NLA threshold lines</b>: 1.2 (Step 3), 0.72 (Step 4), 0.48 (Step 5). <b>NLR threshold lines</b>: 0.89 (Step 3), 0.53 (Step 4), 0.35 (Step 5). Both sourced from the workbook's own <code>NLA Step Achieved</code> / <code>NLR Step Achieved</code> formulas (see Calculated columns, below).</p>
+  <p class="note"><b>NLA threshold lines</b>: 1.2 (Step 3), 0.72 (Step 4), 0.48 (Step 5), sourced from the workbook's own <code>NLA Step Achieved</code> formula (see Calculated columns, below).</p>
+  <p class="note"><b>NLR threshold lines</b>: 0.89 (Step 3), 0.53 (Step 4), 0.35 (Step 5), sourced from the workbook's own <code>NLR Step Achieved</code> formula (see Calculated columns, below).</p>
 
   <h2>MEUI tab</h2>
   <table>
@@ -133,7 +134,7 @@
     <tr><th>Chart</th><th>Column(s)</th></tr>
     <tr><td>Avg. GHGs KPI</td><td><code>GHGs</code></td></tr>
     <tr><td>Avg. GHGs by year</td><td><code>GHGs</code></td></tr>
-    <tr><td>Emissions Level achieved, by year</td><td><code>EL Achieved</code> (EL = Emissions Level, not Energy Limit)</td></tr>
+    <tr><td>Emissions Level achieved, by year</td><td><code>EL Achieved</code></td></tr>
     <tr><td>Fossil fuel burning system, by year</td><td>Derived: "Fossil fuel present" if <code>FURNACEFUEL</code>, <code>PDHWFUEL</code>, <code>SUPPHTGFUEL1</code> or <code>SUPPHTGFUEL2</code> is Natural Gas, Propane or Oil. Wood-burning fireplaces/stoves don't count.</td></tr>
   </table>
 
@@ -159,7 +160,7 @@
   <h3>GHGs and Emissions Level</h3>
   <table>
     <tr><th>Column</th><th>Built from</th><th>How</th></tr>
-    <tr><td><code>GHGs</code></td><td><code>EGHFCONELEC</code>, <code>EGHFCONNGAS</code>, <code>EGHFCONPROP</code>, <code>EGHFCONOIL</code> + fuel emission-factor lookup queries (<code>elecGHGs</code>, <code>CH4GHGs</code>, <code>PropaneGHGs</code>, <code>OilGHGs</code>)</td><td>Sums each fuel's consumption &times; its emission factor</td></tr>
+    <tr><td><code>GHGs</code></td><td><code>EGHFCONELEC</code>, <code>EGHFCONNGAS</code>, <code>EGHFCONPROP</code>, <code>EGHFCONOIL</code></td><td><code>(EGHFCONELEC &times; 0.0036 &times; 3.06) + (EGHFCONNGAS &times; 50 &divide; 26.837) + (EGHFCONPROP &times; 59.87 &divide; 39.1) + (EGHFCONOIL &times; 72.13 &divide; 26.178)</code>, rounded to 1 decimal; each term converts that fuel's raw consumption to GJ, then multiplies by its emission factor in kg CO2e/GJ - electricity 3.06, natural gas 50, propane 59.87, oil 72.13 - now hardcoded directly in the formula rather than via the (still-present but unused) <code>elecGHGs</code>/<code>CH4GHGs</code>/<code>PropaneGHGs</code>/<code>OilGHGs</code> lookup queries</td></tr>
     <tr><td><code>EL Based on Total GHGs</code></td><td><code>GHGs</code></td><td>Bucketed: &le;265&rarr;EL-4, &le;440&rarr;EL-3, &le;1050&rarr;EL-2, else EL-1</td></tr>
     <tr><td><code>EL Based on GHGs per Unit Area</code></td><td><code>GHGs</code>, <code>HEATEDFLOORAREA</code></td><td>Bucketed on GHGs/floor area together with a GHGs cap per level</td></tr>
     <tr><td><code>EL Achieved</code></td><td>the two EL columns above</td><td>The higher (better) of the two</td></tr>
