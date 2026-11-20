@@ -134,6 +134,8 @@
     <tr><th>Chart</th><th>Column(s)</th></tr>
     <tr><td>Avg. GHGs KPI</td><td><code>GHGs</code></td></tr>
     <tr><td>Avg. GHGs by year</td><td><code>GHGs</code></td></tr>
+    <tr><td>Avg. GHG intensity KPI</td><td>Derived: <code>GHGs</code> &divide; <code>HEATEDFLOORAREA</code></td></tr>
+    <tr><td>Avg. GHG intensity by year</td><td>Derived: <code>GHGs</code> &divide; <code>HEATEDFLOORAREA</code></td></tr>
     <tr><td>Emissions Level achieved, by year</td><td><code>EL Achieved</code></td></tr>
     <tr><td>Fossil fuel burning system, by year</td><td>Derived: "Fossil fuel present" if <code>FURNACEFUEL</code>, <code>PDHWFUEL</code>, <code>SUPPHTGFUEL1</code> or <code>SUPPHTGFUEL2</code> is Natural Gas, Propane or Oil. Wood-burning fireplaces/stoves don't count.</td></tr>
   </table>
@@ -161,6 +163,7 @@
   <table>
     <tr><th>Column</th><th>Built from</th><th>How</th></tr>
     <tr><td><code>GHGs</code></td><td><code>EGHFCONELEC</code> (kWh), <code>EGHFCONNGAS</code> (m&sup3;), <code>EGHFCONPROP</code> (L), <code>EGHFCONOIL</code> (L)</td><td><code>(EGHFCONELEC &times; 0.0036 &times; 3.06) + (EGHFCONNGAS &times; 50 &divide; 26.837) + (EGHFCONPROP &times; 59.87 &divide; 39.1) + (EGHFCONOIL &times; 72.13 &divide; 26.178)</code>, rounded to 1 decimal; each term first converts that fuel's raw consumption to GJ (&times;0.0036 GJ/kWh for electricity, &divide;26.837 m&sup3;/GJ for natural gas, &divide;39.1 L/GJ for propane, &divide;26.178 L/GJ for oil), then multiplies by its emission factor in kg CO2e/GJ - electricity 3.06, natural gas 50, propane 59.87, oil 72.13 - now hardcoded directly in the formula rather than via the (still-present but unused) <code>elecGHGs</code>/<code>CH4GHGs</code>/<code>PropaneGHGs</code>/<code>OilGHGs</code> lookup queries</td></tr>
+    <tr><td><code>GHG intensity</code> (dashboard-computed, not from the M code)</td><td><code>GHGs</code>, <code>HEATEDFLOORAREA</code></td><td><code>GHGs &divide; HEATEDFLOORAREA</code> kg CO2e/m&sup2;/yr, computed per home by <code>extract_data.py</code> then averaged; skipped for a home with no <code>HEATEDFLOORAREA</code> (no <code>FLOORAREA</code> fallback, unlike the TEDI/MEUI columns above)</td></tr>
     <tr><td><code>EL Based on Total GHGs</code></td><td><code>GHGs</code></td><td>Bucketed: &le;265&rarr;EL-4, &le;440&rarr;EL-3, &le;1050&rarr;EL-2, else EL-1</td></tr>
     <tr><td><code>EL Based on GHGs per Unit Area</code></td><td><code>GHGs</code>, <code>HEATEDFLOORAREA</code></td><td>Bucketed on GHGs/floor area together with a GHGs cap per level</td></tr>
     <tr><td><code>EL Achieved</code></td><td>the two EL columns above</td><td>The higher (better) of the two</td></tr>

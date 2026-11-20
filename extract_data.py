@@ -482,6 +482,12 @@ def main():
         if limiting:
             cell['cat']['limiting_param'][limiting] += 1
         cell['cat']['fossil_fuel_system'][fossil_fuel_system_label(rowvals)] += 1
+        ghg = to_float(rowvals.get('GHGs'))
+        floor_area = to_float(rowvals.get('HEATEDFLOORAREA'))
+        if ghg is not None and floor_area:
+            acc = cell['num']['ghg_intensity']
+            acc[0] += ghg / floor_area
+            acc[1] += 1
 
     print('Streaming data rows (this can take a minute or two) ...')
     with z.open(sheet_part) as f:
