@@ -81,6 +81,11 @@ CATEGORY_FIELDS = {
     'BUILDINGTYPE': 'building_type',
 }
 
+# Fallback for HEATEDFLOORAREA in the per-floor-area design heat loss/gain
+# calcs below, mirroring the workbook's own TEDI/MEUI fallback: used only
+# when HEATEDFLOORAREA is null or 0.
+FLOOR_AREA_FALLBACK_FIELD = 'FLOORAREA'
+
 CITY_FIELD = 'CLIENTCITY'
 YEAR_FIELD = 'YEARBUILT'
 # An entry can be assigned to a year two ways: when the home was built, or
@@ -427,7 +432,7 @@ def main():
                 elem.clear()
     name_to_letter = {v: k for k, v in header.items() if v}
 
-    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD] + \
+    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD, FLOOR_AREA_FALLBACK_FIELD] + \
         list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS) + ['FURNACEFUEL', 'SUPPHTGFUEL1', 'SUPPHTGFUEL2']
     missing = [n for n in all_names if n not in name_to_letter]
     if missing:
@@ -488,6 +493,18 @@ def main():
             acc = cell['num']['ghg_intensity']
             acc[0] += ghg / floor_area
             acc[1] += 1
+        area = floor_area or to_float(rowvals.get(FLOOR_AREA_FALLBACK_FIELD))
+        if area:
+            heat_loss = to_float(rowvals.get('EGHDESHTLOSS'))
+            if heat_loss is not None:
+                acc = cell['num']['design_heat_loss_per_area']
+                acc[0] += heat_loss / area
+                acc[1] += 1
+            cool_load = to_float(rowvals.get('ERSDesCoolLoss'))
+            if cool_load:
+                acc = cell['num']['design_cool_load_per_area']
+                acc[0] += cool_load / area
+                acc[1] += 1
 
     print('Streaming data rows (this can take a minute or two) ...')
     with z.open(sheet_part) as f:

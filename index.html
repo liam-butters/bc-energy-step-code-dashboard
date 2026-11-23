@@ -298,9 +298,13 @@
     </div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. design heat loss, by year</h3><div class="chart-box" id="chartDesignHeatLossAvg"></div></div>
-      <div class="chart-card"><h3>Avg. design cooling load (heat gain), by year</h3><div class="chart-box" id="chartDesignCoolLoadAvg"></div></div>
+      <div class="chart-card"><h3>Avg. design heat gain, by year</h3><div class="chart-box" id="chartDesignCoolLoadAvg"></div></div>
     </div>
-    <p class="chart-row-note">Design heat loss and design cooling load (heat gain) values are calculated by HOT2000 and are not CSA F280-compliant.</p>
+    <div class="chart-row">
+      <div class="chart-card"><h3>Avg. design heat loss per floor area, by year</h3><div class="chart-box" id="chartDesignHeatLossPerAreaAvg"></div></div>
+      <div class="chart-card"><h3>Avg. design heat gain per floor area, by year</h3><div class="chart-box" id="chartDesignCoolLoadPerAreaAvg"></div></div>
+    </div>
+    <p class="chart-row-note">Design heat loss and design heat gain values are calculated by HOT2000 and are not CSA F280-compliant. The per-floor-area charts divide by heated floor area (or floor area where heated floor area is blank).</p>
   </section>
 
   <section id="tab-airtightness" class="tab-panel" data-panel="airtightness" hidden>
@@ -395,7 +399,7 @@
   var MAX_YEAR = 2026;
   var DEFAULT_YEAR_FROM = 2021;
   var DEFAULT_YEAR_TO = 2026;
-  var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ghg_intensity', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi', 'nla', 'nlr', 'floor_area', 'design_heat_loss', 'design_cool_load', 'tedi_imp', 'meui_imp'];
+  var NUMERIC_KEYS = ['meui', 'tedi', 'ach', 'ghg', 'ghg_intensity', 'ceil_rsi', 'wall_rsi', 'fndwall_rsi', 'nla', 'nlr', 'floor_area', 'design_heat_loss', 'design_cool_load', 'design_heat_loss_per_area', 'design_cool_load_per_area', 'tedi_imp', 'meui_imp'];
   // Steps 3-5's ACH50 airtightness targets (BC Energy Step Code, Part 9).
   // Steps 1-2 have no line drawn (Step 1 has no airtightness target; the
   // Step 2 figure couldn't be confirmed against the official BC Building
@@ -886,7 +890,9 @@
       el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10, topStack: ['Airtightness', 'MEUI', 'TEDI', 'Multiple limiting parameters'] }), { label: 'Limiting parameter' });
       el = document.getElementById('chartFloorAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'floor_area', label: 'Avg heated floor area', valueFmt: function (n) { return fmt0(n * SQM_TO_SQFT); }, unit: 'ft²' });
       el = document.getElementById('chartDesignHeatLossAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_heat_loss', label: 'Avg design heat loss', valueFmt: fmt0, unit: 'W' });
-      el = document.getElementById('chartDesignCoolLoadAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_cool_load', label: 'Avg design cooling load', valueFmt: fmt0, unit: 'W' });
+      el = document.getElementById('chartDesignCoolLoadAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_cool_load', label: 'Avg design heat gain', valueFmt: fmt0, unit: 'W' });
+      el = document.getElementById('chartDesignHeatLossPerAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_heat_loss_per_area', label: 'Avg design heat loss per floor area', valueFmt: fmt1, unit: 'W/m²' });
+      el = document.getElementById('chartDesignCoolLoadPerAreaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'design_cool_load_per_area', label: 'Avg design heat gain per floor area', valueFmt: fmt1, unit: 'W/m²' });
     }
   }
 
