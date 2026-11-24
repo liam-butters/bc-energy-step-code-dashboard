@@ -52,6 +52,13 @@
   }
   .contact-banner a { color: var(--accent); font-weight: 600; white-space: nowrap; }
 
+  .related-banner {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 14px; margin: 0 0 18px 0; font-size: 0.82rem; color: var(--fg-muted);
+  }
+  .related-banner a { color: var(--accent); font-weight: 600; }
+
   .filters {
     display: flex;
     flex-wrap: wrap;
@@ -169,6 +176,7 @@
   footer a { color: var(--accent); }
 
   @media (max-width: 460px) {
+    .related-banner { flex-direction: column; align-items: flex-start; }
     .filters { flex-direction: column; align-items: stretch; }
     .filters select { min-width: 0; width: 100%; }
     .msel { min-width: 0; width: 100%; }
@@ -187,6 +195,12 @@
   <div class="contact-banner">
     <span>Contact <a href="mailto:liam@ecologyconsulting.ca">Liam Butters</a> (liam@ecologyconsulting.ca) for more information about these graphs.</span>
     <a href="method.html">Method</a>
+  </div>
+
+  <div class="related-banner">
+    <span>Related, independently-collected as-built comparisons (password protected):</span>
+    <a href="#" class="related-link" data-url="https://liam-butters.github.io/victoria-step-code-asbuilt-dashboard/" data-password="victoria">Victoria as-built dashboard</a>
+    <a href="#" class="related-link" data-url="https://liam-butters.github.io/saanich-step-code-asbuilt-dashboard/" data-password="saanich">Saanich as-built dashboard</a>
   </div>
 
   <div class="filters">
@@ -423,6 +437,19 @@
   ];
   var COLORS = ['#2f7d6b', '#c76b4a', '#3a6ea5', '#9b6bb5', '#b58a2f', '#4a9bb0', '#a65d6b'];
   var SQM_TO_SQFT = 10.7639;
+
+  document.querySelectorAll('.related-link').forEach(function (a) {
+    a.addEventListener('click', function (event) {
+      event.preventDefault();
+      var pw = window.prompt('Password for this link:');
+      if (pw === null) return;
+      if (pw.trim().toLowerCase() === a.getAttribute('data-password')) {
+        window.open(a.getAttribute('data-url'), '_blank');
+      } else {
+        window.alert('Incorrect password.');
+      }
+    });
+  });
 
   var DATA = null;
   var RAW = [];
