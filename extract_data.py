@@ -108,6 +108,18 @@ STEP_ACHIEVED_FIELD = 'Step Achieved'
 MIN_PLAUSIBLE_YEAR = 1990
 MAX_PLAUSIBLE_YEAR = datetime.date.today().year + 1
 
+# The sibling Victoria/Saanich as-built comparison dashboards need this
+# dashboard's own median (not just mean) by city+year, which the aggregated
+# cube above can't give - a median needs the actual values, not just their
+# sum. Export raw per-home values for only these two cities (not the other
+# ~100 in this dataset), grouped by city+year (not split further by house
+# type/climate/step, so each group stays a reasonably sized set of homes
+# rather than something closer to an individual record) - see
+# MEDIAN_EXPORT_KEYS below and 'median_export' in the output.
+MEDIAN_EXPORT_CITIES = {'Victoria', 'Saanich'}
+MEDIAN_EXPORT_KEYS = ['meui', 'tedi', 'ach', 'nla', 'nlr', 'floor_area', 'ghg', 'ghg_intensity',
+                       'meui_imp', 'tedi_imp', 'design_heat_loss_per_area']
+
 
 def col_letters(ref):
     return ''.join(ch for ch in ref if ch.isalpha())
@@ -393,6 +405,29 @@ def fossil_fuel_system_label(rowvals):
     return FOSSIL_FUEL_ABSENT_LABEL
 
 
+def collect_median_values(rowvals):
+    # Mirrors apply_row()'s own value computation (same fields, same
+    # zero-as-missing/derived-ratio handling), but returns plain values
+    # instead of accumulating into a [sum, count] pair.
+    out = {}
+    for field, key in NUMERIC_FIELDS.items():
+        if key not in MEDIAN_EXPORT_KEYS:
+            continue
+        fv = to_float(rowvals.get(field))
+        if fv is not None and not (fv == 0 and key in ZERO_AS_MISSING):
+            out[key] = fv
+    ghg = to_float(rowvals.get('GHGs'))
+    floor_area = to_float(rowvals.get('HEATEDFLOORAREA'))
+    if ghg is not None and floor_area:
+        out['ghg_intensity'] = ghg / floor_area
+    area = floor_area or to_float(rowvals.get(FLOOR_AREA_FALLBACK_FIELD))
+    if area:
+        heat_loss = to_float(rowvals.get('EGHDESHTLOSS'))
+        if heat_loss is not None:
+            out['design_heat_loss_per_area'] = heat_loss / area
+    return out
+
+
 def main():
     wb_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_WORKBOOK
     print(f'Reading {wb_path.name} ...')
@@ -451,6 +486,8 @@ def main():
     # the user picks which to view in the dashboard.
     YEAR_MODES = ('built', 'entry')
     cubes = {mode: new_cube() for mode in YEAR_MODES}
+    # mode -> (city, year_key) -> metric key -> [values] - see MEDIAN_EXPORT_CITIES.
+    median_raw = {mode: defaultdict(lambda: defaultdict(list)) for mode in YEAR_MODES}
     year_counts = {mode: defaultdict(int) for mode in YEAR_MODES}
     city_counts = defaultdict(int)
     region_counts = defaultdict(int)
@@ -561,6 +598,8 @@ def main():
             climate_zone_counts[climate_zone] += 1
             step_achieved_counts[step_achieved] += 1
 
+            median_values = collect_median_values(rowvals) if city in MEDIAN_EXPORT_CITIES else None
+
             for mode in YEAR_MODES:
                 year_key = year_keys[mode]
                 year_counts[mode][year_key] += 1
@@ -571,6 +610,10 @@ def main():
                 cell['climate_zone'] = climate_zone
                 cell['step_achieved'] = step_achieved
                 apply_row(cell, rowvals)
+                if median_values:
+                    bucket = median_raw[mode][(city, year_key)]
+                    for key, v in median_values.items():
+                        bucket[key].append(v)
 
             if total_rows % 20000 == 0:
                 print(f'  ... {total_rows} rows')
@@ -619,6 +662,16 @@ def main():
             'cells': cells_out,
         }
 
+    # Sorted (not in original row order) so the exact per-home sequence can't
+    # be inferred - only the distribution matters for a median.
+    median_export = {
+        mode: {
+            f'{city}|{year_key}': {key: sorted(values) for key, values in metrics.items()}
+            for (city, year_key), metrics in by_city_year.items()
+        }
+        for mode, by_city_year in median_raw.items()
+    }
+
     out = {
         'generated_at': datetime.datetime.now().isoformat(timespec='seconds'),
         'source_file': wb_path.name,
@@ -635,6 +688,7 @@ def main():
         'step_achieved_counts': step_achieved_counts,
         'year_mode_default': 'built',
         'year_modes': year_modes_out,
+        'median_export': median_export,
     }
 
     OUT_PATH.write_text(json.dumps(out, separators=(',', ':')), encoding='utf-8')
