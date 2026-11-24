@@ -98,14 +98,6 @@ ENTRY_DATE_FIELD = 'ENTRYDATE'
 # relabel them.
 HOUSE_TYPE_FIELD = 'TYPEOFHOUSE'
 MURB_FIELD = 'UNITSMURBS'
-# For a multi-unit building (duplex/triplex/apartment/...), GHGs is the
-# whole building's total (it's derived from that one HOT2000 model's total
-# fuel consumption - see method.html), not a per-unit figure. NUMDWELLINGUNITS
-# is the authoritative dwelling-unit count for the row (more complete/
-# consistent than UNITSMURBS, which is sometimes left at 1 even for a
-# multi-unit building whose NUMDWELLINGUNITS is 2+) - divide GHGs by it so
-# "Avg./median GHGs by year" is on a genuine per-dwelling-unit basis.
-DWELLING_UNITS_FIELD = 'NUMDWELLINGUNITS'
 # Climate zone (4, 5, 6, 7.1, 7.2) is also a cube dimension, same reasoning.
 CLIMATE_ZONE_FIELD = 'Climate Zone'
 # Overall Step Achieved ('0'/'3'/'4'/'5' in this data) is also a cube
@@ -331,11 +323,6 @@ def is_murb(raw):
     return bool(v)
 
 
-def dwelling_units(rowvals):
-    v = to_float(rowvals.get(DWELLING_UNITS_FIELD))
-    return v if v and v > 0 else 1.0
-
-
 def to_float(raw):
     if raw is None or raw == '':
         return None
@@ -428,8 +415,6 @@ def collect_median_values(rowvals):
             continue
         fv = to_float(rowvals.get(field))
         if fv is not None and not (fv == 0 and key in ZERO_AS_MISSING):
-            if key == 'ghg':
-                fv = fv / dwelling_units(rowvals)
             out[key] = fv
     ghg = to_float(rowvals.get('GHGs'))
     floor_area = to_float(rowvals.get('HEATEDFLOORAREA'))
@@ -482,7 +467,7 @@ def main():
                 elem.clear()
     name_to_letter = {v: k for k, v in header.items() if v}
 
-    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD, FLOOR_AREA_FALLBACK_FIELD, DWELLING_UNITS_FIELD] + \
+    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD, FLOOR_AREA_FALLBACK_FIELD] + \
         list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS) + ['FURNACEFUEL', 'SUPPHTGFUEL1', 'SUPPHTGFUEL2']
     missing = [n for n in all_names if n not in name_to_letter]
     if missing:
@@ -523,8 +508,6 @@ def main():
         for field, key in NUMERIC_FIELDS.items():
             fv = to_float(rowvals.get(field))
             if fv is not None and not (fv == 0 and key in ZERO_AS_MISSING):
-                if key == 'ghg':
-                    fv = fv / dwelling_units(rowvals)
                 acc = cell['num'][key]
                 acc[0] += fv
                 acc[1] += 1
