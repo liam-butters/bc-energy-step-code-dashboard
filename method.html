@@ -71,7 +71,7 @@
     <p class="byline">As of November 19, 2026 &middot; Liam Butters</p>
   </header>
 
-  <p>Each table below lists a dashboard chart or filter next to the exact workbook column(s) behind it (source file: <code>NRCan Database Analysis.xlsx</code>, "Conditioned Data" tab, via <code>extract_data.py</code>). "Avg." charts show the mean of the column across homes matching the current filters, excluding blank cells (and, for a few columns noted below, a <code>0</code> sentinel the workbook uses for "not computed"). 2026 is labelled "H1 2026" on every chart axis/tooltip, since the extraction only covers the first half of the year so far.</p>
+  <p>Each table below lists a dashboard chart or filter next to the exact workbook column(s) behind it (source file: <code>NRCan Database Analysis.xlsx</code>, "Conditioned Data" tab, via <code>extract_data.py</code>). Every "Avg." chart/KPI shows the mean - or, with the <b>Statistic</b> filter set to Median, the median - of the column across homes matching the current filters, excluding blank cells and, for columns where a real home never has literally zero (airtightness, floor area, energy use, GHGs, design heat loss/gain, insulation RSI, etc.), a <code>0</code> value, which the workbook uses as a "not computed" sentinel rather than leaving the cell blank. The MEUI/TEDI % improvement columns are the deliberate exception: 0%, or even a negative improvement over the reference house, is a real result there rather than a sentinel, so those two aren't zero-excluded. 2026 is labelled "H1 2026" on every chart axis/tooltip, since the extraction only covers the first half of the year so far.</p>
 
   <h2>Filters</h2>
   <table>
@@ -83,6 +83,7 @@
     <tr><td>Overall step achieved</td><td><code>Step Achieved</code></td></tr>
     <tr><td>MURB</td><td><code>UNITSMURBS</code> (0 = non-MURB, any other number = MURB)</td></tr>
     <tr><td>Assign year by</td><td><code>YEARBUILT</code> (default) or <code>ENTRYDATE</code> - every chart is pre-aggregated both ways, and this filter just picks which aggregation to read from</td></tr>
+    <tr><td>Statistic</td><td>Not a workbook column - switches every "Avg." chart/KPI between the mean and median of the underlying per-home values. <code>extract_data.py</code> exports a raw, sorted per-home value array for every filter combination the dashboard can produce (same city/year/building-type/MURB/climate-zone/step grouping as the rest of the data) so the median can be computed for any selection, not just a few pre-set ones.</td></tr>
   </table>
 
   <h2>Overall tab</h2>
@@ -141,6 +142,7 @@
     <tr><td>Emissions Level achieved, by year</td><td><code>EL Achieved</code></td></tr>
     <tr><td>Fossil fuel burning system, by year</td><td>Derived: "Fossil fuel present" if <code>FURNACEFUEL</code>, <code>PDHWFUEL</code>, <code>SUPPHTGFUEL1</code> or <code>SUPPHTGFUEL2</code> is Natural Gas, Propane or Oil. Wood-burning fireplaces/stoves don't count.</td></tr>
   </table>
+  <p class="note"><b>Internal-only field:</b> <code>data.json</code> also carries a <code>ghg_per_unit</code> value (<code>GHGs</code> &divide; <code>NUMDWELLINGUNITS</code>) alongside the raw <code>GHGs</code> figure above, but this dashboard's own GHGs chart/KPI always uses the raw, undivided value - a duplex or apartment building's GHGs is shown here exactly as the workbook reports it, a whole-building total. <code>ghg_per_unit</code> exists solely so the Victoria/Saanich as-built comparison dashboards - whose own GHGs figure is already on a per-dwelling-unit basis - can compare apples-to-apples; it's never shown in this dashboard's own UI.</p>
 
   <h2>Heating &amp; cooling tab</h2>
   <table>

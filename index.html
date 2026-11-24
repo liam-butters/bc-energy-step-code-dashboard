@@ -278,6 +278,12 @@
         <option value="entry">Entry date</option>
       </select>
     </label>
+    <label>Statistic
+      <select id="statFilter" aria-label="Statistic">
+        <option value="mean">Mean (average)</option>
+        <option value="median">Median</option>
+      </select>
+    </label>
     <label><span id="yearFromLabel">Year built from</span>
       <select id="yearFromFilter" aria-label="Year from"></select>
     </label>
@@ -322,7 +328,7 @@
   </section>
 
   <section id="tab-airtightness" class="tab-panel" data-panel="airtightness" hidden>
-    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label" id="kpiAchLabel">Avg. airtightness, current filters</span><span class="kpi-value" id="kpiAch">—</span><span class="kpi-unit">ACH50</span></div></div>
     <div class="chart-row">
       <div class="chart-card"><h3>Airtightness step achieved, by year</h3><div class="chart-box" id="chartAchStep"></div><p class="chart-note">% of homes in that year at each airtightness step.</p></div>
       <div class="chart-card"><h3>Avg. ACH50 by year</h3><div class="chart-box" id="chartAchAvg"></div></div>
@@ -334,7 +340,7 @@
   </section>
 
   <section id="tab-meui" class="tab-panel" data-panel="meui" hidden>
-    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. MEUI, current filters</span><span class="kpi-value" id="kpiMeui">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label" id="kpiMeuiLabel">Avg. MEUI, current filters</span><span class="kpi-value" id="kpiMeui">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. MEUI by year</h3><div class="chart-box" id="chartMeuiAvg"></div></div>
       <div class="chart-card"><h3>MEUI step achieved, by year</h3><div class="chart-box" id="chartMeuiStep"></div><p class="chart-note">% of homes in that year at each MEUI step.</p></div>
@@ -345,7 +351,7 @@
   </section>
 
   <section id="tab-tedi" class="tab-panel" data-panel="tedi" hidden>
-    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label">Avg. TEDI, current filters</span><span class="kpi-value" id="kpiTedi">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
+    <div class="kpi-row"><div class="kpi-card"><span class="kpi-label" id="kpiTediLabel">Avg. TEDI, current filters</span><span class="kpi-value" id="kpiTedi">—</span><span class="kpi-unit">kWh/m²/yr</span></div></div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. TEDI by year</h3><div class="chart-box" id="chartTediAvg"></div></div>
       <div class="chart-card"><h3>TEDI step achieved, by year</h3><div class="chart-box" id="chartTediStep"></div><p class="chart-note">% of homes in that year at each TEDI step.</p></div>
@@ -357,8 +363,8 @@
 
   <section id="tab-emissions" class="tab-panel" data-panel="emissions" hidden>
     <div class="kpi-row">
-      <div class="kpi-card"><span class="kpi-label">Avg. GHGs, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/yr</span></div>
-      <div class="kpi-card"><span class="kpi-label">Avg. GHG intensity, current filters</span><span class="kpi-value" id="kpiGhgIntensity">—</span><span class="kpi-unit">kg CO2e/m²/yr</span></div>
+      <div class="kpi-card"><span class="kpi-label" id="kpiGhgLabel">Avg. GHGs, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/yr</span></div>
+      <div class="kpi-card"><span class="kpi-label" id="kpiGhgIntensityLabel">Avg. GHG intensity, current filters</span><span class="kpi-value" id="kpiGhgIntensity">—</span><span class="kpi-unit">kg CO2e/m²/yr</span></div>
     </div>
     <div class="chart-row">
       <div class="chart-card"><h3>Avg. GHGs by year</h3><div class="chart-box" id="chartGhgAvg"></div></div>
@@ -455,7 +461,7 @@
   var RAW = [];
   var state = {
     cities: [], regions: [], houseTypes: [], climateZones: [], stepAchieved: [], murb: '', yearMode: 'built',
-    yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO
+    stat: 'mean', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO
   };
   var currentTab = 'overall';
 
@@ -522,14 +528,46 @@
     return { count: count, avg: avg, cats: cats };
   }
 
+  function medianOf(sortedArr) {
+    var n = sortedArr.length;
+    if (!n) return null;
+    var mid = Math.floor(n / 2);
+    return n % 2 ? sortedArr[mid] : (sortedArr[mid - 1] + sortedArr[mid]) / 2;
+  }
+
+  // Same shape as aggregateCells()'s {count, avg} but pools each matching
+  // cell's raw per-home values (cell.median) instead of its [sum, count]
+  // pairs, so renderers can treat mean and median interchangeably.
+  function aggregateCellsMedian(rows, p, numericKeys) {
+    var count = 0;
+    var merged = {}; numericKeys.forEach(function (k) { merged[k] = []; });
+    for (var i = 0; i < rows.length; i++) {
+      var cell = rows[i];
+      if (!cellInRange(cell, p)) continue;
+      count += cell.count;
+      for (var ni = 0; ni < numericKeys.length; ni++) {
+        var k = numericKeys[ni];
+        var arr = cell.median && cell.median[k];
+        if (arr) merged[k] = merged[k].concat(arr);
+      }
+    }
+    var avg = {};
+    numericKeys.forEach(function (k) {
+      var arr = merged[k].slice().sort(function (a, b) { return a - b; });
+      avg[k] = arr.length ? medianOf(arr) : null;
+    });
+    return { count: count, avg: avg };
+  }
+
   function computeSummary() {
     var agg = aggregateCells(RAW, state, NUMERIC_KEYS, ['heat_pump', 'cooling']);
+    var numAgg = state.stat === 'median' ? aggregateCellsMedian(RAW, state, NUMERIC_KEYS) : agg;
     var hp = agg.cats.heat_pump || {}, cl = agg.cats.cooling || {};
     var hpTotal = Object.keys(hp).reduce(function (a, k) { return a + hp[k]; }, 0);
     var clTotal = Object.keys(cl).reduce(function (a, k) { return a + cl[k]; }, 0);
     return {
       count: agg.count,
-      avgMEUI: agg.avg.meui, avgTEDI: agg.avg.tedi, avgACH: agg.avg.ach, avgGHG: agg.avg.ghg, avgGhgIntensity: agg.avg.ghg_intensity,
+      avgMEUI: numAgg.avg.meui, avgTEDI: numAgg.avg.tedi, avgACH: numAgg.avg.ach, avgGHG: numAgg.avg.ghg, avgGhgIntensity: numAgg.avg.ghg_intensity,
       pctHeatPump: hpTotal ? 100 * (hp['Heat Pump'] || 0) / hpTotal : null,
       pctCooled: clTotal ? 100 * (cl['Cooled'] || 0) / clTotal : null
     };
@@ -563,6 +601,38 @@
     out.sort(function (a, b) { return a.year - b.year; });
     return out;
   }
+
+  // Median counterpart of computeYearTrend(), pooling each matching cell's
+  // raw per-home values (cell.median) per year instead of summing [sum,count].
+  function computeYearTrendMedian() {
+    var byYear = {};
+    for (var i = 0; i < RAW.length; i++) {
+      var cell = RAW[i];
+      if (!cellInRange(cell, state)) continue;
+      if (typeof cell.year !== 'number') continue;
+      var acc = byYear[cell.year] || (byYear[cell.year] = { count: 0, arr: {} });
+      acc.count += cell.count;
+      for (var ni = 0; ni < NUMERIC_KEYS.length; ni++) {
+        var k = NUMERIC_KEYS[ni];
+        var v = cell.median && cell.median[k];
+        if (!v) continue;
+        acc.arr[k] = (acc.arr[k] || []).concat(v);
+      }
+    }
+    var out = Object.keys(byYear).map(function (yearStr) {
+      var year = Number(yearStr), acc = byYear[yearStr];
+      var row = { year: year, count: acc.count };
+      NUMERIC_KEYS.forEach(function (k) {
+        var arr = acc.arr[k];
+        row[k] = arr && arr.length ? medianOf(arr.slice().sort(function (a, b) { return a - b; })) : null;
+      });
+      return row;
+    });
+    out.sort(function (a, b) { return a.year - b.year; });
+    return out;
+  }
+
+  function yearTrend() { return state.stat === 'median' ? computeYearTrendMedian() : computeYearTrend(); }
 
   // Rows -> { years, catKeys, rows: [{year, total, segs: [{category, count, pct}]}] }
   // for a 100%-stacked "mix of category, by year" chart.
@@ -741,7 +811,7 @@
       .text(function (d) { return opts.valueFmt(d[opts.key]); });
     bars.on('mousemove', function (event, d) {
       var line = '<b>' + yearLabel(d.year) + '</b><br>' + opts.valueFmt(d[opts.key]) + (opts.unit ? ' ' + opts.unit : '');
-      line += opts.key === 'count' ? ' homes' : (' avg · ' + fmt0(d.count) + ' homes');
+      line += opts.key === 'count' ? ' homes' : (' ' + (state.stat === 'median' ? 'median' : 'avg') + ' · ' + fmt0(d.count) + ' homes');
       showTooltip(el, line, event.clientX, event.clientY);
     }).on('mouseleave', hideTooltip);
 
@@ -864,6 +934,11 @@
   function renderKpis() {
     var s = computeSummary();
     var yearVerb = state.yearMode === 'entry' ? 'entered' : 'built';
+    var statPrefix = state.stat === 'median' ? 'Median' : 'Avg.';
+    ['kpiAchLabel', 'kpiMeuiLabel', 'kpiTediLabel', 'kpiGhgLabel', 'kpiGhgIntensityLabel'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = el.textContent.replace(/^(Avg\.|Median)/, statPrefix);
+    });
     setText('kpiMeui', fmt1(s.avgMEUI));
     setText('kpiTedi', fmt1(s.avgTEDI));
     setText('kpiAch', fmt2(s.avgACH));
@@ -882,23 +957,23 @@
   function renderTab(tab) {
     var el, trend;
     if (tab === 'airtightness') {
-      trend = computeYearTrend();
+      trend = yearTrend();
       el = document.getElementById('chartAchAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ach', label: 'Avg ACH50', valueFmt: fmt2, unit: 'ACH50', thresholds: ACH_STEP_THRESHOLDS });
       el = document.getElementById('chartAchStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('ach_step', { order: 'numeric' }), { label: 'Airtightness step', labelFn: stepLabel });
       el = document.getElementById('chartNlaAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nla', label: 'Avg NLA', valueFmt: fmt2, unit: 'NLA', thresholds: NLA_STEP_THRESHOLDS });
       el = document.getElementById('chartNlrAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'nlr', label: 'Avg NLR', valueFmt: fmt2, unit: 'NLR', thresholds: NLR_STEP_THRESHOLDS });
     } else if (tab === 'meui') {
-      trend = computeYearTrend();
+      trend = yearTrend();
       el = document.getElementById('chartMeuiAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'meui', label: 'Avg MEUI', valueFmt: fmt1, unit: 'kWh/m²/yr' });
       el = document.getElementById('chartMeuiStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('meui_step', { order: 'numeric' }), { label: 'MEUI step', labelFn: stepLabel });
       el = document.getElementById('chartMeuiImpAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'meui_imp', label: 'Avg MEUI % improvement', valueFmt: fmt1, unit: '%' });
     } else if (tab === 'tedi') {
-      trend = computeYearTrend();
+      trend = yearTrend();
       el = document.getElementById('chartTediAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'tedi', label: 'Avg TEDI', valueFmt: fmt1, unit: 'kWh/m²/yr' });
       el = document.getElementById('chartTediStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('tedi_step', { order: 'numeric' }), { label: 'TEDI step', labelFn: stepLabel });
       el = document.getElementById('chartTediImpAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'tedi_imp', label: 'Avg TEDI % improvement', valueFmt: function (n) { return fmt1(n * 100); }, unit: '%' });
     } else if (tab === 'emissions') {
-      trend = computeYearTrend();
+      trend = yearTrend();
       el = document.getElementById('chartGhgAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg', label: 'Avg GHGs', valueFmt: fmt0, unit: 'kg CO2e/yr' });
       el = document.getElementById('chartGhgIntensityAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg_intensity', label: 'Avg GHG intensity', valueFmt: fmt1, unit: 'kg CO2e/m²/yr' });
       el = document.getElementById('chartElStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('el_achieved', { order: 'numeric' }), { label: 'EL achieved', labelFn: elLabel });
@@ -911,7 +986,7 @@
     } else if (tab === 'dhw') {
       el = document.getElementById('chartDhwFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('dhw_fuel'), { label: 'DHW fuel' });
     } else if (tab === 'overall') {
-      trend = computeYearTrend();
+      trend = yearTrend();
       el = document.getElementById('chartEntryCount'); if (el) drawAvgByYearBars(el, trend, { key: 'count', label: 'Entries', valueFmt: fmt0 });
       el = document.getElementById('chartOverallStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('step_achieved', { order: 'numeric' }), { label: 'Overall step', labelFn: stepLabel });
       el = document.getElementById('chartLimitingParam'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('limiting_param', { topN: 10, topStack: ['Airtightness', 'MEUI', 'TEDI', 'Multiple limiting parameters'] }), { label: 'Limiting parameter' });
@@ -1079,6 +1154,7 @@
 
     document.getElementById('murbFilter').value = state.murb;
     document.getElementById('yearModeFilter').value = state.yearMode;
+    document.getElementById('statFilter').value = state.stat;
     document.getElementById('yearFromLabel').textContent = state.yearMode === 'entry' ? 'Entry year from' : 'Year built from';
 
     var years = []; for (var y = MIN_YEAR; y <= MAX_YEAR; y++) years.push(y);
@@ -1166,6 +1242,7 @@
   document.getElementById('yearToFilter').addEventListener('change', function () { setState({ yearTo: Math.max(Number(this.value), state.yearFrom) }); });
   document.getElementById('murbFilter').addEventListener('change', function () { setState({ murb: this.value }); });
   document.getElementById('yearModeFilter').addEventListener('change', function () { switchYearMode(this.value); });
+  document.getElementById('statFilter').addEventListener('change', function () { setState({ stat: this.value }); });
   document.getElementById('resetFilters').addEventListener('click', function () {
     document.getElementById('cityMselSearch').value = '';
     closeAllMsels();
@@ -1174,7 +1251,7 @@
     var years = (DATA && DATA.year_modes.built.years || []).filter(function (y) { return typeof y === 'number'; });
     MIN_YEAR = years.length ? Math.min.apply(null, years) : 2014;
     MAX_YEAR = years.length ? Math.max.apply(null, years) : 2026;
-    setState({ cities: [], regions: [], houseTypes: [], climateZones: [], stepAchieved: [], murb: '', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
+    setState({ cities: [], regions: [], houseTypes: [], climateZones: [], stepAchieved: [], murb: '', stat: 'mean', yearFrom: DEFAULT_YEAR_FROM, yearTo: DEFAULT_YEAR_TO });
   });
 
   document.getElementById('tabNav').addEventListener('click', function (event) {
