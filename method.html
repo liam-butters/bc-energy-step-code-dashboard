@@ -135,14 +135,14 @@
   <h2>Emissions tab</h2>
   <table>
     <tr><th>Chart</th><th>Column(s)</th></tr>
-    <tr><td>Avg. GHGs KPI</td><td><code>GHGs</code></td></tr>
-    <tr><td>Avg. GHGs by year</td><td><code>GHGs</code></td></tr>
+    <tr><td>Avg. GHGs KPI</td><td>Derived: <code>GHGs</code> &divide; <code>NUMDWELLINGUNITS</code></td></tr>
+    <tr><td>Avg. GHGs by year</td><td>Derived: <code>GHGs</code> &divide; <code>NUMDWELLINGUNITS</code></td></tr>
     <tr><td>Avg. GHG intensity KPI</td><td>Derived: <code>GHGs</code> &divide; <code>HEATEDFLOORAREA</code></td></tr>
     <tr><td>Avg. GHG intensity by year</td><td>Derived: <code>GHGs</code> &divide; <code>HEATEDFLOORAREA</code></td></tr>
     <tr><td>Emissions Level achieved, by year</td><td><code>EL Achieved</code></td></tr>
     <tr><td>Fossil fuel burning system, by year</td><td>Derived: "Fossil fuel present" if <code>FURNACEFUEL</code>, <code>PDHWFUEL</code>, <code>SUPPHTGFUEL1</code> or <code>SUPPHTGFUEL2</code> is Natural Gas, Propane or Oil. Wood-burning fireplaces/stoves don't count.</td></tr>
   </table>
-  <p class="note"><b>Internal-only field:</b> <code>data.json</code> also carries a <code>ghg_per_unit</code> value (<code>GHGs</code> &divide; <code>NUMDWELLINGUNITS</code>) alongside the raw <code>GHGs</code> figure above, but this dashboard's own GHGs chart/KPI always uses the raw, undivided value - a duplex or apartment building's GHGs is shown here exactly as the workbook reports it, a whole-building total. <code>ghg_per_unit</code> exists solely so the Victoria/Saanich as-built comparison dashboards - whose own GHGs figure is already on a per-dwelling-unit basis - can compare apples-to-apples; it's never shown in this dashboard's own UI.</p>
+  <p class="note"><b>GHGs is per dwelling unit, per year:</b> the workbook's <code>GHGs</code> column is a whole-building total (e.g. a duplex or apartment building's combined GHGs, not one unit's share) - this dashboard divides it by <code>NUMDWELLINGUNITS</code> before charting/averaging it, so "Avg. GHGs" here means kg CO2e/yr per dwelling unit, comparable across a mix of single detached homes and multi-unit buildings. <b>GHG intensity</b> is the one exception: it's still computed from the raw, undivided <code>GHGs</code> total &divide; <code>HEATEDFLOORAREA</code>, since <code>HEATEDFLOORAREA</code> is also a whole-building figure (dividing both by <code>NUMDWELLINGUNITS</code> would cancel out and give the same ratio anyway). The Victoria/Saanich as-built comparison dashboards read this dashboard's <code>ghg</code> value directly for their own NRCan comparison, so they're on the same per-dwelling-unit basis without any extra conversion.</p>
 
   <h2>Heating &amp; cooling tab</h2>
   <table>
@@ -172,6 +172,7 @@
     <tr><td><code>EL Based on GHGs per Unit Area</code></td><td><code>GHGs</code>, <code>HEATEDFLOORAREA</code></td><td>Bucketed on GHGs/floor area together with a GHGs cap per level</td></tr>
     <tr><td><code>EL Achieved</code></td><td>the two EL columns above</td><td>The higher (better) of the two</td></tr>
   </table>
+  <p class="note">The <code>GHGs</code> and <code>HEATEDFLOORAREA</code> columns above are the workbook's own whole-building figures. The per-dwelling-unit division for the dashboard's "Avg. GHGs" chart/KPI (see Emissions tab above) happens in <code>extract_data.py</code>, not in the workbook's M code.</p>
 
   <h3>Airtightness</h3>
   <p class="note">The workbook recognizes three separate compliance paths for airtightness (ACH50, NLR, NLA) and a home only needs to clear one of them at a given step - so each path gets its own step column, and a fourth column combines them into the home's actual airtightness step.</p>
