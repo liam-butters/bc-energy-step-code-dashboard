@@ -135,14 +135,14 @@
   <h2>Emissions tab</h2>
   <table>
     <tr><th>Chart</th><th>Column(s)</th></tr>
-    <tr><td>Avg. GHGs KPI</td><td>Derived: <code>GHGs</code> &divide; <code>NUMDWELLINGUNITS</code></td></tr>
-    <tr><td>Avg. GHGs by year</td><td>Derived: <code>GHGs</code> &divide; <code>NUMDWELLINGUNITS</code></td></tr>
+    <tr><td>Avg. GHGs KPI</td><td><code>GHGs</code></td></tr>
+    <tr><td>Avg. GHGs by year</td><td><code>GHGs</code></td></tr>
     <tr><td>Avg. GHG intensity KPI</td><td>Derived: <code>GHGs</code> &divide; <code>HEATEDFLOORAREA</code></td></tr>
     <tr><td>Avg. GHG intensity by year</td><td>Derived: <code>GHGs</code> &divide; <code>HEATEDFLOORAREA</code></td></tr>
     <tr><td>Emissions Level achieved, by year</td><td><code>EL Achieved</code></td></tr>
     <tr><td>Fossil fuel burning system, by year</td><td>Derived: "Fossil fuel present" if <code>FURNACEFUEL</code>, <code>PDHWFUEL</code>, <code>SUPPHTGFUEL1</code> or <code>SUPPHTGFUEL2</code> is Natural Gas, Propane or Oil. Wood-burning fireplaces/stoves don't count.</td></tr>
   </table>
-  <p class="note"><b>GHGs is per dwelling unit, per year:</b> the workbook's <code>GHGs</code> column is a whole-building total (e.g. a duplex or apartment building's combined GHGs, not one unit's share) - this dashboard divides it by <code>NUMDWELLINGUNITS</code> before charting/averaging it, so "Avg. GHGs" here means kg CO2e/yr per dwelling unit, comparable across a mix of single detached homes and multi-unit buildings. <b>GHG intensity</b> is the one exception: it's still computed from the raw, undivided <code>GHGs</code> total &divide; <code>HEATEDFLOORAREA</code>, since <code>HEATEDFLOORAREA</code> is also a whole-building figure (dividing both by <code>NUMDWELLINGUNITS</code> would cancel out and give the same ratio anyway). The Victoria/Saanich as-built comparison dashboards read this dashboard's <code>ghg</code> value directly for their own NRCan comparison, so they're on the same per-dwelling-unit basis without any extra conversion.</p>
+  <p class="note"><b>GHGs is a whole-building total, not a per-dwelling-unit value:</b> the workbook's <code>GHGs</code> column is already a whole-building total (e.g. a duplex or apartment building's combined GHGs, not one unit's share), and this dashboard charts/averages it as-is, so "Avg. GHGs" here means kg CO2e/yr for the whole building, counted once per row regardless of how many dwelling units it has. <b>GHG intensity</b> is still computed from that same raw <code>GHGs</code> total &divide; <code>HEATEDFLOORAREA</code> (both whole-building figures, so the ratio is unaffected). The Victoria/Saanich as-built comparison dashboards read this dashboard's <code>ghg</code> value directly for their own NRCan comparison, so they're on the same whole-building basis without any extra conversion.</p>
 
   <h2>Heating &amp; cooling tab</h2>
   <table>

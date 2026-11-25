@@ -363,11 +363,11 @@
 
   <section id="tab-emissions" class="tab-panel" data-panel="emissions" hidden>
     <div class="kpi-row">
-      <div class="kpi-card"><span class="kpi-label" id="kpiGhgLabel">Avg. GHGs per dwelling unit, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/unit/yr</span></div>
+      <div class="kpi-card"><span class="kpi-label" id="kpiGhgLabel">Avg. GHGs, current filters</span><span class="kpi-value" id="kpiGhg">—</span><span class="kpi-unit">kg CO2e/yr</span></div>
       <div class="kpi-card"><span class="kpi-label" id="kpiGhgIntensityLabel">Avg. GHG intensity, current filters</span><span class="kpi-value" id="kpiGhgIntensity">—</span><span class="kpi-unit">kg CO2e/m²/yr</span></div>
     </div>
     <div class="chart-row">
-      <div class="chart-card"><h3>Avg. GHGs per dwelling unit, by year</h3><div class="chart-box" id="chartGhgAvg"></div></div>
+      <div class="chart-card"><h3>Avg. GHGs, by year</h3><div class="chart-box" id="chartGhgAvg"></div></div>
       <div class="chart-card"><h3>Emissions Level achieved, by year</h3><div class="chart-box" id="chartElStep"></div><p class="chart-note">% of homes in that year at each Emissions Level (EL).</p></div>
     </div>
     <div class="chart-row">
@@ -974,7 +974,7 @@
       el = document.getElementById('chartTediImpAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'tedi_imp', label: 'Avg TEDI % improvement', valueFmt: function (n) { return fmt1(n * 100); }, unit: '%' });
     } else if (tab === 'emissions') {
       trend = yearTrend();
-      el = document.getElementById('chartGhgAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg', label: 'Avg GHGs per dwelling unit', valueFmt: fmt0, unit: 'kg CO2e/unit/yr' });
+      el = document.getElementById('chartGhgAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg', label: 'Avg GHGs', valueFmt: fmt0, unit: 'kg CO2e/yr' });
       el = document.getElementById('chartGhgIntensityAvg'); if (el) drawAvgByYearBars(el, trend, { key: 'ghg_intensity', label: 'Avg GHG intensity', valueFmt: fmt1, unit: 'kg CO2e/m²/yr' });
       el = document.getElementById('chartElStep'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('el_achieved', { order: 'numeric' }), { label: 'EL achieved', labelFn: elLabel });
       el = document.getElementById('chartFossilFuel'); if (el) drawStackedBars100(el, computeYearCategoryBreakdown('fossil_fuel_system'), { label: 'Fossil fuel system' });

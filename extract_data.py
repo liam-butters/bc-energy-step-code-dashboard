@@ -39,11 +39,10 @@ NUMERIC_FIELDS = {
     "Calc'd TEDI": 'tedi',
     "Calc'd NLR": 'nlr',
     'Rounded ACH': 'ach',
-    # GHGs is deliberately NOT here - it needs dividing by NUMDWELLINGUNITS
-    # (see dwelling_units() below) before it's a per-home value, unlike
-    # every other field in this dict, so it's computed separately in
-    # apply_row()/collect_median_values() instead of through this generic
-    # loop.
+    # GHGs is deliberately NOT here - it's paired with HEATEDFLOORAREA to
+    # also derive ghg_intensity, unlike every other field in this dict, so
+    # it's computed separately in apply_row()/collect_median_values()
+    # instead of through this generic loop.
     'CEILINS': 'ceil_rsi',
     'MAINWALLINS': 'wall_rsi',
     'FNDWALLINS': 'fndwall_rsi',
@@ -102,11 +101,6 @@ CITY_FIELD = 'CLIENTCITY'
 # reliable. CITY_FIELD above is only a fallback for the rows (a large
 # minority) that have no postal code at all.
 PCODE_FIELD = 'CLIENTPCODE'
-# A row's GHGs is a whole-building total (e.g. a duplex or apartment
-# building's combined GHGs, not one unit's share) - divided by this field so
-# the dashboard's "Avg. GHGs" is on a per-dwelling-unit, per-year basis
-# comparable across single detached homes and multi-unit buildings alike.
-DWELLING_UNITS_FIELD = 'NUMDWELLINGUNITS'
 YEAR_FIELD = 'YEARBUILT'
 # An entry can be assigned to a year two ways: when the home was built, or
 # when it was entered/evaluated. The dashboard lets the user pick, so both
@@ -357,12 +351,6 @@ def to_float(raw):
         return None
 
 
-def dwelling_units(rowvals):
-    # Default to 1 unit when NUMDWELLINGUNITS is blank/invalid.
-    v = to_float(rowvals.get(DWELLING_UNITS_FIELD))
-    return v if v and v >= 1 else 1.0
-
-
 def normalize_climate_zone(raw):
     v = to_float(raw)
     if v is None:
@@ -452,7 +440,7 @@ def collect_median_values(rowvals):
     if ghg and floor_area:
         out['ghg_intensity'] = ghg / floor_area
     if ghg:
-        out['ghg'] = ghg / dwelling_units(rowvals)
+        out['ghg'] = ghg
     area = floor_area or to_float(rowvals.get(FLOOR_AREA_FALLBACK_FIELD))
     if area:
         heat_loss = to_float(rowvals.get('EGHDESHTLOSS'))
@@ -500,7 +488,7 @@ def main():
                 elem.clear()
     name_to_letter = {v: k for k, v in header.items() if v}
 
-    all_names = [CITY_FIELD, PCODE_FIELD, DWELLING_UNITS_FIELD, 'GHGs', YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD, FLOOR_AREA_FALLBACK_FIELD] + \
+    all_names = [CITY_FIELD, PCODE_FIELD, 'GHGs', YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD, FLOOR_AREA_FALLBACK_FIELD] + \
         list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS) + ['FURNACEFUEL', 'SUPPHTGFUEL1', 'SUPPHTGFUEL2']
     missing = [n for n in all_names if n not in name_to_letter]
     if missing:
@@ -574,7 +562,7 @@ def main():
         if ghg and floor_area:
             add_metric(cell, 'ghg_intensity', ghg / floor_area)
         if ghg:
-            add_metric(cell, 'ghg', ghg / dwelling_units(rowvals))
+            add_metric(cell, 'ghg', ghg)
         area = floor_area or to_float(rowvals.get(FLOOR_AREA_FALLBACK_FIELD))
         if area:
             heat_loss = to_float(rowvals.get('EGHDESHTLOSS'))
