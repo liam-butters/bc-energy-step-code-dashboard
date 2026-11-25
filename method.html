@@ -76,8 +76,8 @@
   <h2>Filters</h2>
   <table>
     <tr><th>Filter</th><th>Column(s)</th></tr>
-    <tr><td>Regional district</td><td>Derived from <code>CLIENTCITY</code> via a city&rarr;region lookup table (<code>regions.py</code>), not a workbook column</td></tr>
-    <tr><td>Municipality</td><td><code>CLIENTCITY</code></td></tr>
+    <tr><td>Regional district</td><td>Derived from the row's municipality (see below) via a city&rarr;region lookup table (<code>regions.py</code>), not a workbook column</td></tr>
+    <tr><td>Municipality</td><td>Derived from <code>CLIENTPCODE</code>'s Forward Sortation Area (the postal code's first 3 characters) via an FSA&rarr;municipality lookup table (<code>fsa.py</code>), not read directly from the free-text, often-inconsistent <code>CLIENTCITY</code> column - which is only a fallback for the rows (a large minority) with no postal code at all</td></tr>
     <tr><td>Building type</td><td><code>TYPEOFHOUSE</code></td></tr>
     <tr><td>Climate zone</td><td><code>Climate Zone</code></td></tr>
     <tr><td>Overall step achieved</td><td><code>Step Achieved</code></td></tr>

@@ -22,6 +22,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from regions import CITY_TO_REGION, UNMAPPED_LABEL
+from fsa import city_from_fsa
 
 NS = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
 SHEET_NAME = 'Conditioned Data'
@@ -91,6 +92,12 @@ CATEGORY_FIELDS = {
 FLOOR_AREA_FALLBACK_FIELD = 'FLOORAREA'
 
 CITY_FIELD = 'CLIENTCITY'
+# The municipality a row is bucketed into is primarily determined by this
+# field's Forward Sortation Area (see fsa.py) - CLIENTCITY is free text (full
+# of typos and inconsistent spellings) while a postal code is far more
+# reliable. CITY_FIELD above is only a fallback for the rows (a large
+# minority) that have no postal code at all.
+PCODE_FIELD = 'CLIENTPCODE'
 YEAR_FIELD = 'YEARBUILT'
 # An entry can be assigned to a year two ways: when the home was built, or
 # when it was entered/evaluated. The dashboard lets the user pick, so both
@@ -102,20 +109,6 @@ ENTRY_DATE_FIELD = 'ENTRYDATE'
 # relabel them.
 HOUSE_TYPE_FIELD = 'TYPEOFHOUSE'
 MURB_FIELD = 'UNITSMURBS'
-# For a multi-unit building (duplex/triplex/apartment/...), GHGs is the whole
-# building's total (it's derived from that one HOT2000 model's total fuel
-# consumption - see method.html), not a per-unit figure. The main dashboard's
-# own "Avg./median GHGs" deliberately uses the raw, undivided GHGs value (per
-# user instruction - it should show exactly what the spreadsheet reports), but
-# the Victoria/Saanich as-built comparison dashboards need a genuine
-# per-dwelling-unit GHGs figure for their own NRCan baseline column, to stay
-# consistent with their own data (which already divides by Dwelling Units -
-# see their own extract_data.py). 'ghg_per_unit' below exists only for that:
-# it's computed for every row but never surfaced in this dashboard's own UI.
-# NUMDWELLINGUNITS is the authoritative dwelling-unit count for the row (more
-# complete/consistent than UNITSMURBS, which is sometimes left at 1 even for a
-# multi-unit building whose NUMDWELLINGUNITS is 2+).
-DWELLING_UNITS_FIELD = 'NUMDWELLINGUNITS'
 # Climate zone (4, 5, 6, 7.1, 7.2) is also a cube dimension, same reasoning.
 CLIMATE_ZONE_FIELD = 'Climate Zone'
 # Overall Step Achieved ('0'/'3'/'4'/'5' in this data) is also a cube
@@ -140,7 +133,7 @@ MAX_PLAUSIBLE_YEAR = datetime.date.today().year + 1
 # ~100 in this dataset - see MEDIAN_EXPORT_KEYS below and 'median_export' in
 # the output.
 MEDIAN_EXPORT_CITIES = {'Victoria', 'Saanich'}
-MEDIAN_EXPORT_KEYS = ['meui', 'tedi', 'ach', 'nla', 'nlr', 'floor_area', 'ghg', 'ghg_per_unit', 'ghg_intensity',
+MEDIAN_EXPORT_KEYS = ['meui', 'tedi', 'ach', 'nla', 'nlr', 'floor_area', 'ghg', 'ghg_intensity',
                        'meui_imp', 'tedi_imp', 'design_heat_loss_per_area']
 
 
@@ -346,11 +339,6 @@ def is_murb(raw):
     return bool(v)
 
 
-def dwelling_units(rowvals):
-    v = to_float(rowvals.get(DWELLING_UNITS_FIELD))
-    return v if v and v > 0 else 1.0
-
-
 def to_float(raw):
     if raw is None or raw == '':
         return None
@@ -448,8 +436,6 @@ def collect_median_values(rowvals):
     floor_area = to_float(rowvals.get('HEATEDFLOORAREA'))
     if ghg and floor_area:
         out['ghg_intensity'] = ghg / floor_area
-    if ghg:
-        out['ghg_per_unit'] = ghg / dwelling_units(rowvals)
     area = floor_area or to_float(rowvals.get(FLOOR_AREA_FALLBACK_FIELD))
     if area:
         heat_loss = to_float(rowvals.get('EGHDESHTLOSS'))
@@ -497,7 +483,7 @@ def main():
                 elem.clear()
     name_to_letter = {v: k for k, v in header.items() if v}
 
-    all_names = [CITY_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD, FLOOR_AREA_FALLBACK_FIELD, DWELLING_UNITS_FIELD] + \
+    all_names = [CITY_FIELD, PCODE_FIELD, YEAR_FIELD, ENTRY_DATE_FIELD, HOUSE_TYPE_FIELD, MURB_FIELD, CLIMATE_ZONE_FIELD, FLOOR_AREA_FALLBACK_FIELD] + \
         list(NUMERIC_FIELDS) + list(CATEGORY_FIELDS) + ['FURNACEFUEL', 'SUPPHTGFUEL1', 'SUPPHTGFUEL2']
     missing = [n for n in all_names if n not in name_to_letter]
     if missing:
@@ -570,12 +556,6 @@ def main():
         floor_area = to_float(rowvals.get('HEATEDFLOORAREA'))
         if ghg and floor_area:
             add_metric(cell, 'ghg_intensity', ghg / floor_area)
-        if ghg:
-            # Per-dwelling-unit GHGs - see DWELLING_UNITS_FIELD comment above.
-            # Not used by this dashboard's own charts (so no median needed
-            # here); only exported for the Victoria/Saanich sub-dashboards'
-            # NRCan baseline column (via median_export below).
-            add_metric(cell, 'ghg_per_unit', ghg / dwelling_units(rowvals), collect_median=False)
         area = floor_area or to_float(rowvals.get(FLOOR_AREA_FALLBACK_FIELD))
         if area:
             heat_loss = to_float(rowvals.get('EGHDESHTLOSS'))
@@ -609,7 +589,7 @@ def main():
             if not rowvals:
                 continue
 
-            city = normalize_city(rowvals.get(CITY_FIELD))
+            city = city_from_fsa(rowvals.get(PCODE_FIELD)) or normalize_city(rowvals.get(CITY_FIELD))
             year_built = normalize_year(rowvals.get(YEAR_FIELD))
             year_entry = entry_date_to_year(rowvals.get(ENTRY_DATE_FIELD))
             year_keys = {
