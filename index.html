@@ -939,6 +939,17 @@
       var el = document.getElementById(id);
       if (el) el.textContent = el.textContent.replace(/^(Avg\.|Median)/, statPrefix);
     });
+    // The "Avg. X, by year" chart cards draw from yearTrend(), which already
+    // switches to the median per-home values when the Statistic filter is
+    // set to Median - this keeps each card's own heading in sync with that,
+    // the same way the KPI labels above do.
+    ['chartFloorAreaAvg', 'chartDesignHeatLossAvg', 'chartDesignCoolLoadAvg', 'chartDesignHeatLossPerAreaAvg',
+     'chartDesignCoolLoadPerAreaAvg', 'chartAchAvg', 'chartNlaAvg', 'chartNlrAvg', 'chartMeuiAvg', 'chartMeuiImpAvg',
+     'chartTediAvg', 'chartTediImpAvg', 'chartGhgAvg', 'chartGhgIntensityAvg'].forEach(function (id) {
+      var box = document.getElementById(id);
+      var h3 = box && box.closest('.chart-card') && box.closest('.chart-card').querySelector('h3');
+      if (h3) h3.textContent = h3.textContent.replace(/^(Avg\.|Median)/, statPrefix);
+    });
     setText('kpiMeui', fmt1(s.avgMEUI));
     setText('kpiTedi', fmt1(s.avgTEDI));
     setText('kpiAch', fmt2(s.avgACH));
