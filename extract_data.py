@@ -139,6 +139,14 @@ MEDIAN_EXPORT_CITIES = {'Victoria', 'Saanich'}
 MEDIAN_EXPORT_KEYS = ['meui', 'tedi', 'ach', 'nla', 'nlr', 'floor_area', 'ghg', 'ghg_intensity',
                        'meui_imp', 'tedi_imp', 'design_heat_loss_per_area']
 
+# The Saanich sub-dashboard additionally needs each home's metrics kept
+# together (not shuffled independently per metric like median_export above),
+# so it can identify its highest-GHG homes and drop those same homes from
+# every other metric too, not just GHG. Scoped to Saanich alone - a step
+# down in anonymity from median_export above, so it's kept to just the one
+# city that actually needs it rather than extended to Victoria too.
+LINKED_HOME_EXPORT_CITIES = {'Saanich'}
+
 
 def col_letters(ref):
     return ''.join(ch for ch in ref if ch.isalpha())
@@ -516,6 +524,8 @@ def main():
     cubes = {mode: new_cube() for mode in YEAR_MODES}
     # mode -> (city, year_key) -> metric key -> [values] - see MEDIAN_EXPORT_CITIES.
     median_raw = {mode: defaultdict(lambda: defaultdict(list)) for mode in YEAR_MODES}
+    # mode -> (city, year_key) -> [per-home metric dicts] - see LINKED_HOME_EXPORT_CITIES.
+    linked_homes_raw = {mode: defaultdict(list) for mode in YEAR_MODES}
     year_counts = {mode: defaultdict(int) for mode in YEAR_MODES}
     city_counts = defaultdict(int)
     region_counts = defaultdict(int)
@@ -643,6 +653,8 @@ def main():
                     bucket = median_raw[mode][(city, year_key)]
                     for key, v in median_values.items():
                         bucket[key].append(v)
+                    if city in LINKED_HOME_EXPORT_CITIES:
+                        linked_homes_raw[mode][(city, year_key)].append(median_values)
 
             if total_rows % 20000 == 0:
                 print(f'  ... {total_rows} rows')
@@ -705,6 +717,17 @@ def main():
         for mode, by_city_year in median_raw.items()
     }
 
+    # Each home's own dict already has no fixed field order to preserve, and
+    # sorting the dicts themselves would be meaningless - about all there is
+    # to anonymize here is to not ship them in original row order.
+    linked_home_export = {
+        mode: {
+            f'{city}|{year_key}': sorted(homes, key=lambda h: json.dumps(h, sort_keys=True))
+            for (city, year_key), homes in by_city_year.items()
+        }
+        for mode, by_city_year in linked_homes_raw.items()
+    }
+
     out = {
         'generated_at': datetime.datetime.now().isoformat(timespec='seconds'),
         'source_file': wb_path.name,
@@ -722,6 +745,7 @@ def main():
         'year_mode_default': 'built',
         'year_modes': year_modes_out,
         'median_export': median_export,
+        'linked_home_export': linked_home_export,
     }
 
     OUT_PATH.write_text(json.dumps(out, separators=(',', ':')), encoding='utf-8')
